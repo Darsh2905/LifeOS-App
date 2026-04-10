@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, ListTodo, Clock, StickyNote, BarChart3,
-  Settings, Crosshair, Sun, Moon, LogOut, Sparkles
+  Settings, Crosshair, Sun, Moon, LogOut, Sparkles, Wallet
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFocus } from '../context/FocusContext';
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 
 const navItems = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { id: 'finance', icon: Wallet, label: 'Finance' },
   { id: 'tasks', icon: ListTodo, label: 'Tasks' },
   { id: 'timer', icon: Clock, label: 'Timer' },
   { id: 'notes', icon: StickyNote, label: 'Notes' },

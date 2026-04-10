@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, LayoutDashboard, ListTodo, Clock, StickyNote,
-  BarChart3, Settings, Play, Plus, ArrowRight, X
+  BarChart3, Settings, Play, Plus, ArrowRight, X, Wallet
 } from 'lucide-react';
 import { useTasks } from '../context/TaskContext';
 import { useNotes } from '../context/NotesContext';
@@ -10,6 +10,7 @@ import { useTimer } from '../context/TimerContext';
 
 const pages = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, keywords: 'home overview due soon stats' },
+  { id: 'finance', label: 'Finance', icon: Wallet, keywords: 'money budget income expense transactions rupees' },
   { id: 'tasks', label: 'Tasks', icon: ListTodo, keywords: 'todo priority due recurring' },
   { id: 'timer', label: 'Timer', icon: Clock, keywords: 'focus pomodoro sessions' },
   { id: 'notes', label: 'Notes', icon: StickyNote, keywords: 'writing flashcards tags' },
@@ -136,7 +137,7 @@ export default function CommandPalette({ activePage, onNavigate }) {
         whileHover={{ y: -1 }}
         whileTap={{ scale: 0.97 }}
         onClick={() => setIsOpen(true)}
-        className="fixed right-6 top-5 z-30 hidden md:flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-card)]/80 px-3 py-2 text-sm text-[var(--color-text-secondary)] backdrop-blur-xl shadow-lg shadow-black/10 hover:text-[var(--color-text-primary)]"
+        className="fixed right-6 bottom-6 z-30 hidden md:flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-card)]/80 px-3 py-2 text-sm text-[var(--color-text-secondary)] backdrop-blur-xl shadow-lg shadow-black/10 hover:text-[var(--color-text-primary)]"
       >
         <Search size={15} className="text-purple-400" />
         Search

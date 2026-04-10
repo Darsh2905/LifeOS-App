@@ -5,16 +5,18 @@ import { useTasks } from '../context/TaskContext';
 import { useNotes } from '../context/NotesContext';
 import { useTimer } from '../context/TimerContext';
 import { useFocus } from '../context/FocusContext';
+import { useFinance } from '../context/FinanceContext';
 import { useAuth } from '../context/AuthContext';
 import { CATEGORIES, OVERVIEW_TABS, PRIORITY_COLORS, TASK_STATES, QUOTES } from '../utils/constants';
-import { formatTime } from '../utils/helpers';
+import { formatRupees, formatTime } from '../utils/helpers';
 import {
   Play, Pause, RotateCcw,
   CheckSquare, Crosshair,
   Check, Trash2, Plus, Sparkles, ListTodo,
   CalendarDays, Target, BookOpen,
   PenLine, Dumbbell, UtensilsCrossed, RefreshCw,
-  Clock, ImageIcon, StickyNote, Pin, Pencil, X, Repeat2, AlertCircle
+  Clock, ImageIcon, StickyNote, Pin, Pencil, X, Repeat2, AlertCircle,
+  Wallet, TrendingUp, TrendingDown
 } from 'lucide-react';
 
 /* ── animation variants ── */
@@ -207,7 +209,7 @@ function getDueState(dueDate) {
   return { label: `${days}d left`, tone: days <= 7 ? 'accent' : 'muted', days };
 }
 
-function NotesFlashcards() {
+function NotesFlashcards({ compact = false, className = '' }) {
   const { notes } = useNotes();
   const [expandedId, setExpandedId] = useState(null);
   const visibleNotes = notes.slice(0, 6);
@@ -217,7 +219,7 @@ function NotesFlashcards() {
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.28, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="mb-8"
+      className={`${compact ? '' : 'mb-8'} ${className}`}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -247,7 +249,7 @@ function NotesFlashcards() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${compact ? '' : 'xl:grid-cols-3'} gap-4`}>
           <AnimatePresence mode="popLayout">
             {visibleNotes.map((note, i) => {
               const isExpanded = expandedId === note.id;
@@ -264,11 +266,10 @@ function NotesFlashcards() {
                   whileHover={{ y: -5, rotate: i % 2 === 0 ? -0.5 : 0.5 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setExpandedId(isExpanded ? null : note.id)}
-                  className={`group relative text-left rounded-xl border p-4 overflow-hidden transition-all ${
-                    isExpanded
+                  className={`group relative text-left rounded-xl border p-4 overflow-hidden transition-all ${isExpanded
                       ? 'md:col-span-2 xl:col-span-2 border-purple-500/30'
                       : 'border-[var(--color-border)] hover:border-purple-500/30'
-                  }`}
+                    }`}
                   style={{
                     background: note.color || 'linear-gradient(135deg, var(--color-surface-card), var(--color-surface-elevated))',
                     boxShadow: isExpanded
@@ -302,9 +303,8 @@ function NotesFlashcards() {
 
                     <motion.p
                       layout
-                      className={`text-sm text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap ${
-                        isExpanded ? '' : 'line-clamp-3'
-                      }`}
+                      className={`text-sm text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap ${isExpanded ? '' : 'line-clamp-3'
+                        }`}
                     >
                       {isExpanded ? (note.content || 'Empty note') : getNoteSummary(note.content)}
                     </motion.p>
@@ -491,9 +491,8 @@ function HeroBanner({ currentTheme, onSwitchTheme }) {
                 transition={{ delay: i * 0.04 }}
                 whileHover={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
                 onClick={() => switchTheme(t.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-all ${
-                  currentTheme === t.id ? 'text-purple-400 bg-purple-500/10' : 'text-white/70 hover:text-white'
-                }`}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-all ${currentTheme === t.id ? 'text-purple-400 bg-purple-500/10' : 'text-white/70 hover:text-white'
+                  }`}
               >
                 <div className="w-6 h-6 rounded-md overflow-hidden border border-white/10 flex-shrink-0">
                   <img src={t.hero} alt="" className="w-full h-full object-cover" />
@@ -817,9 +816,8 @@ function HabitsTab() {
                 return (
                   <motion.button key={d.key} whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }}
                     onClick={isToday ? () => toggleDay(habit.id) : undefined}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all ${
-                      done ? 'bg-purple-500/20 text-purple-400' : isToday ? 'bg-white/5 text-[var(--color-text-muted)] hover:bg-purple-500/10 cursor-pointer' : 'bg-white/[0.02] text-[var(--color-text-muted)]/50'
-                    } ${!isToday && !done ? 'cursor-default opacity-40' : ''}`}>
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all ${done ? 'bg-purple-500/20 text-purple-400' : isToday ? 'bg-white/5 text-[var(--color-text-muted)] hover:bg-purple-500/10 cursor-pointer' : 'bg-white/[0.02] text-[var(--color-text-muted)]/50'
+                      } ${!isToday && !done ? 'cursor-default opacity-40' : ''}`}>
                     {done ? <Check size={14} /> : isToday ? '·' : ''}
                   </motion.button>
                 );
@@ -1055,40 +1053,17 @@ function MealTab() {
 }
 
 /* ── Overview Table ── */
-function OverviewTable() {
-  const { tasks, updateTask, completeTask, deleteTask, addTask } = useTasks();
+function OverviewTable({ onAddTaskRequest }) {
+  const { tasks, updateTask, completeTask, deleteTask } = useTasks();
   const { enterFocus } = useFocus();
   const [activeTab, setActiveTab] = useState('todo');
-  const [showAddRow, setShowAddRow] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState('Work');
-  const [newPriority, setNewPriority] = useState('medium');
-  const [newDueDate, setNewDueDate] = useState('');
-  const [newRecurring, setNewRecurring] = useState('none');
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDueDate, setEditDueDate] = useState('');
   const [editPriority, setEditPriority] = useState('medium');
   const [editRecurring, setEditRecurring] = useState('none');
 
-  const handleAdd = (e) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-    addTask({
-      title: newTitle.trim(),
-      category: newCategory,
-      priority: newPriority,
-      dueDate: newDueDate,
-      recurring: newRecurring,
-    });
-    setNewTitle('');
-    setNewDueDate('');
-    setNewRecurring('none');
-    setShowAddRow(false);
-  };
-
   const startEdit = (task) => {
-    setShowAddRow(false);
     setEditingTaskId(task.id);
     setEditTitle(task.title || '');
     setEditDueDate(formatTaskDateForInput(task.dueDate));
@@ -1134,7 +1109,7 @@ function OverviewTable() {
           title="No tasks yet"
           subtitle="Add your first task to start organizing your workflow"
           action="Add Task"
-          onAction={() => setShowAddRow(true)}
+          onAction={onAddTaskRequest}
         />
       );
     }
@@ -1246,11 +1221,10 @@ function OverviewTable() {
                             else if (task.recurring && task.recurring !== 'none') completeTask(task.id);
                             else updateTask(task.id, { status: TASK_STATES.DONE });
                           }}
-                          className={`w-4.5 h-4.5 rounded border-2 flex items-center justify-center transition-all ${
-                            isDone
+                          className={`w-4.5 h-4.5 rounded border-2 flex items-center justify-center transition-all ${isDone
                               ? 'border-purple-500 bg-purple-500 shadow-sm shadow-purple-500/30'
                               : 'border-[var(--color-text-muted)] hover:border-purple-400'
-                          }`}
+                            }`}
                         >
                           <AnimatePresence>
                             {isDone && (
@@ -1341,11 +1315,10 @@ function OverviewTable() {
             onClick={() => setActiveTab(tab.id)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all relative ${
-              activeTab === tab.id
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all relative ${activeTab === tab.id
                 ? 'text-purple-400'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-white/5'
-            }`}
+              }`}
           >
             {activeTab === tab.id && (
               <motion.div
@@ -1378,62 +1351,15 @@ function OverviewTable() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Add row for Todo tab only */}
+        {/* Add from the full Tasks page */}
         {activeTab === 'todo' && (
-          <AnimatePresence>
-            {showAddRow ? (
-              <motion.form
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                onSubmit={handleAdd}
-                className="grid grid-cols-12 gap-2 px-4 py-3 items-center bg-[var(--color-surface-hover)] border-t border-[var(--color-border)]"
-              >
-                <div className="col-span-1" />
-                <div className="col-span-4">
-                  <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Task name..." autoFocus
-                    className="w-full bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none" />
-                </div>
-                <div className="col-span-2">
-                  <select value={newCategory} onChange={e => setNewCategory(e.target.value)}
-                    className="bg-[var(--color-surface-dark)] border border-[var(--color-border)] rounded px-1.5 py-1 text-xs text-[var(--color-text-primary)] outline-none">
-                    <option>Work</option><option>Life</option><option>Health</option>
-                  </select>
-                </div>
-                <div className="col-span-3 flex gap-1.5">
-                  <input value={newDueDate} onChange={e => setNewDueDate(e.target.value)} type="date"
-                    className="min-w-0 flex-1 bg-[var(--color-surface-dark)] border border-[var(--color-border)] rounded px-1.5 py-1 text-xs text-[var(--color-text-primary)] outline-none" />
-                  <select value={newRecurring} onChange={e => setNewRecurring(e.target.value)}
-                    className="w-20 bg-[var(--color-surface-dark)] border border-[var(--color-border)] rounded px-1 py-1 text-xs text-[var(--color-text-primary)] outline-none">
-                    <option value="none">Once</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </div>
-                <div className="col-span-1">
-                  <select value={newPriority} onChange={e => setNewPriority(e.target.value)}
-                    className="bg-[var(--color-surface-dark)] border border-[var(--color-border)] rounded px-1 py-1 text-xs text-[var(--color-text-primary)] outline-none">
-                    <option value="high">High</option><option value="medium">Med</option><option value="low">Low</option>
-                  </select>
-                </div>
-                <div className="col-span-1 flex justify-end gap-1">
-                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} type="submit"
-                    className="p-1 rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">
-                    <Check size={13} />
-                  </motion.button>
-                </div>
-              </motion.form>
-            ) : (
-              <motion.button
-                whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
-                onClick={() => setShowAddRow(true)}
-                className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors border-t border-[var(--color-border)]"
-              >
-                <Plus size={14} /> New task
-              </motion.button>
-            )}
-          </AnimatePresence>
+          <motion.button
+            whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
+            onClick={onAddTaskRequest}
+            className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors border-t border-[var(--color-border)]"
+          >
+            <Plus size={14} /> New task
+          </motion.button>
         )}
       </motion.div>
     </motion.div>
@@ -1590,8 +1516,104 @@ function PomodoroMini() {
   );
 }
 
+/* ── Finance Summary Widget ── */
+function FinanceWidget({ className = '' }) {
+  const { monthlyIncome, monthlyExpenses, balance, expensesByCategory, budget } = useFinance();
+  const pct = budget > 0 ? Math.min(Math.round((monthlyExpenses / budget) * 100), 100) : 0;
+  const isOver = monthlyExpenses > budget && budget > 0;
+  const hasData = monthlyIncome > 0 || monthlyExpenses > 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.35, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -2, boxShadow: '0 16px 48px rgba(0,0,0,0.2), 0 0 20px rgba(147,51,234,0.05)' }}
+      className={`rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-card)] p-4 h-full transition-all ${className}`}
+    >
+      {/* Header row */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+          <Wallet size={13} className="text-emerald-400" />
+        </div>
+        <span className="text-xs font-semibold text-[var(--color-text-primary)]">Finance</span>
+        <span className="text-[9px] text-[var(--color-text-muted)] bg-white/5 px-1.5 py-0.5 rounded-md ml-auto">This month</span>
+      </div>
+
+      {hasData ? (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-white/[0.03] border border-[var(--color-border)] px-3 py-2.5">
+            <p className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-medium mb-0.5">Balance</p>
+            <p className={`text-xl font-bold tracking-tight tabular-nums ${balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {balance >= 0 ? '+' : '-'}{formatRupees(Math.abs(balance))}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-2">
+            <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/10 px-2.5 py-2">
+              <div className="flex items-center gap-1 mb-0.5">
+                <TrendingUp size={10} className="text-emerald-400" />
+                <span className="text-[9px] text-emerald-400/70 font-medium">Income</span>
+              </div>
+              <p className="text-sm font-bold text-[var(--color-text-primary)] tabular-nums">{formatRupees(monthlyIncome)}</p>
+            </div>
+            <div className="rounded-lg bg-red-500/5 border border-red-500/10 px-2.5 py-2">
+              <div className="flex items-center gap-1 mb-0.5">
+                <TrendingDown size={10} className="text-red-400" />
+                <span className="text-[9px] text-red-400/70 font-medium">Spent</span>
+              </div>
+              <p className="text-sm font-bold text-[var(--color-text-primary)] tabular-nums">{formatRupees(monthlyExpenses)}</p>
+            </div>
+          </div>
+
+          {expensesByCategory.length > 0 && (
+            <div className="flex flex-col gap-1 rounded-lg bg-white/[0.03] border border-[var(--color-border)] px-3 py-2.5">
+              <p className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-medium mb-0.5">Top spending</p>
+              {expensesByCategory.slice(0, 3).map(cat => (
+                <div key={cat.id} className="flex items-center gap-1.5">
+                  <span className="text-[10px]">{cat.icon}</span>
+                  <span className="text-[10px] text-[var(--color-text-secondary)] flex-1 truncate">{cat.label}</span>
+                  <span className="text-[10px] font-semibold text-[var(--color-text-primary)] tabular-nums">{formatRupees(cat.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 py-1">
+          <p className="text-xs text-[var(--color-text-muted)]">
+            No transactions yet — head to <span className="text-purple-400 font-medium">Finance</span> to start tracking
+          </p>
+        </div>
+      )}
+
+      {/* Budget bar (compact, below) */}
+      {budget > 0 && hasData && (
+        <div className="mt-3 pt-2.5 border-t border-[var(--color-border)]">
+          <div className="flex items-center gap-3">
+            <Target size={11} className="text-purple-400 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 1, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className={`h-full rounded-full ${isOver ? 'bg-red-500' : 'bg-gradient-to-r from-purple-500 to-fuchsia-500'}`}
+                />
+              </div>
+            </div>
+            <span className={`text-[10px] font-semibold tabular-nums ${isOver ? 'text-red-400' : 'text-[var(--color-text-secondary)]'}`}>
+              {formatRupees(monthlyExpenses)} / {formatRupees(budget)}
+            </span>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 /* ── Main Dashboard ── */
-export default function Dashboard() {
+export default function Dashboard({ onNavigate }) {
   const { user } = useAuth();
   const [currentTheme, setCurrentTheme] = useState(() => storage.get('lifeos-image-theme', 'neon'));
 
@@ -1613,6 +1635,10 @@ export default function Dashboard() {
     day: 'numeric',
     year: 'numeric',
   });
+
+  const openTaskCreator = () => {
+    onNavigate?.('tasks', 'new-task');
+  };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
@@ -1654,18 +1680,22 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      <LiveClock />
-
-      <div className="mt-4">
-        <CategoryCards currentTheme={currentTheme} />
+      <div className="mt-2 mb-6">
+        <LiveClock />
       </div>
 
-      <NotesFlashcards />
+      <CategoryCards currentTheme={currentTheme} />
+
       <DueSoonTasks />
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-6 items-start mb-8">
+        <NotesFlashcards compact className="min-w-0" />
+        <FinanceWidget className="min-w-0" />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <OverviewTable />
+          <OverviewTable onAddTaskRequest={openTaskCreator} />
         </div>
         <div>
           <QuickStats />

@@ -6,6 +6,7 @@ import { TaskProvider } from './context/TaskContext';
 import { NotesProvider } from './context/NotesContext';
 import { TimerProvider } from './context/TimerContext';
 import { FocusProvider } from './context/FocusContext';
+import { FinanceProvider } from './context/FinanceContext';
 import Sidebar from './components/Sidebar';
 import CommandPalette from './components/CommandPalette';
 import Dashboard from './pages/Dashboard';
@@ -14,6 +15,7 @@ import TimerPage from './pages/TimerPage';
 import NotesPage from './pages/NotesPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import FinancePage from './pages/FinancePage';
 import FocusMode from './pages/FocusMode';
 import AuthPage from './pages/AuthPage';
 
@@ -22,18 +24,25 @@ const pages = {
   tasks: TasksPage,
   timer: TimerPage,
   notes: NotesPage,
+  finance: FinancePage,
   analytics: AnalyticsPage,
   settings: SettingsPage,
 };
 
 function AppContent() {
   const [activePage, setActivePage] = useState('dashboard');
+  const [pageAction, setPageAction] = useState(null);
   const Page = pages[activePage] || Dashboard;
+
+  const handleNavigate = (page, action = null) => {
+    setPageAction(action ? { page, action, id: Date.now() } : null);
+    setActivePage(page);
+  };
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-dark)] transition-colors duration-300 noise-overlay">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
-      <CommandPalette activePage={activePage} onNavigate={setActivePage} />
+      <Sidebar activePage={activePage} onNavigate={handleNavigate} />
+      <CommandPalette activePage={activePage} onNavigate={handleNavigate} />
       <main className="pl-[92px]">
         <div className="p-6 max-w-[1400px] mx-auto">
           <AnimatePresence mode="wait">
@@ -44,7 +53,11 @@ function AppContent() {
               exit={{ opacity: 0, y: -10, scale: 0.995 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             >
-              <Page />
+              <Page
+                onNavigate={handleNavigate}
+                pageAction={pageAction}
+                onPageActionHandled={() => setPageAction(null)}
+              />
             </motion.div>
           </AnimatePresence>
         </div>
@@ -90,7 +103,9 @@ function AuthGate() {
             <NotesProvider>
               <TimerProvider>
                 <FocusProvider>
-                  <AppContent />
+                  <FinanceProvider>
+                    <AppContent />
+                  </FinanceProvider>
                 </FocusProvider>
               </TimerProvider>
             </NotesProvider>

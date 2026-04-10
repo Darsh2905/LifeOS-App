@@ -15,6 +15,15 @@ export function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
+export function formatRupees(value) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(Number(value) || 0);
+}
+
 export function getTodayKey() {
   return new Date().toISOString().split('T')[0];
 }

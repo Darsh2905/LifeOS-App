@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BentoCard from '../components/BentoCard';
 import ProgressBar from '../components/ProgressBar';
@@ -44,8 +44,8 @@ function formatTaskDate(value) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function TasksPage() {
-  const { tasks, addTask, updateTask, completeTask, deleteTask, completionRate } = useTasks();
+export default function TasksPage({ pageAction, onPageActionHandled }) {
+  const { tasks, addTask, updateTask, deleteTask, completionRate } = useTasks();
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -58,6 +58,14 @@ export default function TasksPage() {
   const [editPriority, setEditPriority] = useState(PRIORITIES.MEDIUM);
   const [editDueDate, setEditDueDate] = useState('');
   const [editRecurring, setEditRecurring] = useState('none');
+
+  useEffect(() => {
+    if (pageAction?.page !== 'tasks' || pageAction.action !== 'new-task') return;
+
+    setEditingTask(null);
+    setShowModal(true);
+    onPageActionHandled?.();
+  }, [onPageActionHandled, pageAction]);
 
   const filtered = tasks.filter(t => {
     if (filterStatus !== 'all' && t.status !== filterStatus) return false;
@@ -73,6 +81,14 @@ export default function TasksPage() {
     setNewDueDate('');
     setNewRecurring('none');
     setShowModal(false);
+  };
+
+  const advanceTaskStatus = (task) => {
+    const status = nextState(task.status);
+    updateTask(task.id, {
+      status,
+      ...(status === TASK_STATES.DONE ? { lastCompletedAt: new Date().toISOString() } : {}),
+    });
   };
 
   const openEdit = (task) => {
@@ -204,7 +220,7 @@ export default function TasksPage() {
                           </motion.button>
                           <motion.button
                             whileTap={{ scale: 0.8 }}
-                            onClick={() => task.status === TASK_STATES.IN_PROGRESS ? completeTask(task.id) : updateTask(task.id, { status: nextState(task.status) })}
+                            onClick={() => advanceTaskStatus(task)}
                             className="p-1 rounded hover:bg-white/10 text-[var(--color-text-muted)]"
                             title={task.status === TASK_STATES.DONE ? 'Reopen' : 'Next status'}
                           >
