@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a0a1e"/>
+      <stop offset="40%" stop-color="#2d1b3d"/>
+      <stop offset="100%" stop-color="#1a0a1e"/>
+    </linearGradient>
+    <radialGradient id="moonGlow" cx="0.8" cy="0.2" r="0.3">
+      <stop offset="0%" stop-color="#fdf2f8" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#fdf2f8" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="glow"><feGaussianBlur stdDeviation="6" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="400" fill="url(#sky)"/>
+  <rect width="1200" height="400" fill="url(#moonGlow)"/>
+  <!-- Moon -->
+  <circle cx="950" cy="80" r="35" fill="#fdf2f8" opacity="0.15" filter="url(#glow)"/>
+  <circle cx="950" cy="80" r="20" fill="#fdf2f8" opacity="0.25"/>
+  <!-- Branch -->
+  <path d="M-20,200 Q200,180 400,220 Q600,260 750,200 Q900,140 1000,180" stroke="#4a2030" stroke-width="4" fill="none" opacity="0.7"/>
+  <path d="M400,220 Q420,180 480,190" stroke="#4a2030" stroke-width="2.5" fill="none" opacity="0.6"/>
+  <path d="M600,248 Q610,210 660,220" stroke="#4a2030" stroke-width="2" fill="none" opacity="0.6"/>
+  <!-- Cherry blossoms -->
+  <g filter="url(#soft)" opacity="0.8">
+    <circle cx="200" cy="190" r="8" fill="#f9a8d4"/>
+    <circle cx="215" cy="185" r="6" fill="#f472b6"/>
+    <circle cx="350" cy="215" r="7" fill="#f9a8d4"/>
+    <circle cx="365" cy="210" r="5" fill="#f472b6"/>
+    <circle cx="480" cy="188" r="9" fill="#f9a8d4"/>
+    <circle cx="495" cy="182" r="6" fill="#f472b6"/>
+    <circle cx="550" cy="240" r="7" fill="#f9a8d4"/>
+    <circle cx="660" cy="218" r="8" fill="#f9a8d4"/>
+    <circle cx="675" cy="212" r="5" fill="#f472b6"/>
+    <circle cx="800" cy="180" r="7" fill="#f9a8d4"/>
+    <circle cx="815" cy="175" r="5" fill="#f472b6"/>
+    <circle cx="900" cy="160" r="6" fill="#f9a8d4"/>
+  </g>
+  <!-- Falling petals -->
+  <g opacity="0.5">
+    <ellipse cx="150" cy="300" rx="4" ry="3" fill="#f9a8d4" transform="rotate(30,150,300)"/>
+    <ellipse cx="450" cy="340" rx="3" ry="2" fill="#f472b6" transform="rotate(-20,450,340)"/>
+    <ellipse cx="700" cy="310" rx="4" ry="2.5" fill="#f9a8d4" transform="rotate(45,700,310)"/>
+    <ellipse cx="1050" cy="280" rx="3" ry="2" fill="#f9a8d4" transform="rotate(-35,1050,280)"/>
+    <ellipse cx="300" cy="350" rx="3" ry="2" fill="#f472b6" transform="rotate(15,300,350)"/>
+    <ellipse cx="850" cy="350" rx="4" ry="2.5" fill="#f9a8d4" transform="rotate(-45,850,350)"/>
+  </g>
+  <!-- Ground -->
+  <rect x="0" y="360" width="1200" height="40" fill="#1a0a1e" opacity="0.6"/>
+</svg>

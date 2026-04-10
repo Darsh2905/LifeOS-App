@@ -1,16 +1,122 @@
-import React from 'react';
-import { Router } from 'react-router-dom';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { TaskProvider } from './context/TaskContext';
+import { NotesProvider } from './context/NotesContext';
+import { TimerProvider } from './context/TimerContext';
+import { FocusProvider } from './context/FocusContext';
+import Sidebar from './components/Sidebar';
+import CommandPalette from './components/CommandPalette';
+import Dashboard from './pages/Dashboard';
+import TasksPage from './pages/TasksPage';
+import TimerPage from './pages/TimerPage';
+import NotesPage from './pages/NotesPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import SettingsPage from './pages/SettingsPage';
+import FocusMode from './pages/FocusMode';
+import AuthPage from './pages/AuthPage';
 
-import GlobalStyles from './assets/styles/global';
-import Routes from './routes';
-import history from './routes/history';
+const pages = {
+  dashboard: Dashboard,
+  tasks: TasksPage,
+  timer: TimerPage,
+  notes: NotesPage,
+  analytics: AnalyticsPage,
+  settings: SettingsPage,
+};
+
+function AppContent() {
+  const [activePage, setActivePage] = useState('dashboard');
+  const Page = pages[activePage] || Dashboard;
+
+  return (
+    <div className="min-h-screen bg-[var(--color-surface-dark)] transition-colors duration-300 noise-overlay">
+      <Sidebar activePage={activePage} onNavigate={setActivePage} />
+      <CommandPalette activePage={activePage} onNavigate={setActivePage} />
+      <main className="pl-[92px]">
+        <div className="p-6 max-w-[1400px] mx-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activePage}
+              initial={{ opacity: 0, y: 10, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <Page />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
+      <FocusMode />
+    </div>
+  );
+}
+
+function AuthGate() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-t-purple-500"
+          />
+          <p className="text-sm text-[#555]">Loading...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <AnimatePresence mode="wait">
+      {isAuthenticated ? (
+        <motion.div
+          key="app"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <TaskProvider>
+            <NotesProvider>
+              <TimerProvider>
+                <FocusProvider>
+                  <AppContent />
+                </FocusProvider>
+              </TimerProvider>
+            </NotesProvider>
+          </TaskProvider>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="auth"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <AuthPage />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export default function App() {
   return (
-    <Router history={history}>
-      <GlobalStyles />
-
-      <Routes />
-    </Router>
+    <ThemeProvider>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
