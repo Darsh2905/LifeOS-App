@@ -1,58 +1,81 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { storage } from '../utils/storage';
-import { generateId } from '../utils/helpers';
+import { api } from '../utils/api';
+import { useAuth } from './AuthContext';
 
 const NotesContext = createContext();
 
 export function NotesProvider({ children }) {
-  const [notes, setNotes] = useState(() => storage.get('lifeos-notes', []));
+  const { isAuthenticated } = useAuth();
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    storage.set('lifeos-notes', notes);
+  const refresh = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const data = await api.get('/notes');
+      setNotes(data);
+    } catch (err) {
+      console.error('Notes fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const addNote = useCallback(async (note) => {
+    try {
+      const created = await api.post('/notes', note);
+      setNotes(prev => [created, ...prev]);
+    } catch (err) {
+      console.error('Add note error:', err);
+    }
+  }, []);
+
+  const updateNote = useCallback(async (id, updates) => {
+    try {
+      const updated = await api.put(`/notes/${id}`, updates);
+      setNotes(prev => prev.map(n => n.id === id ? updated : n));
+    } catch (err) {
+      console.error('Update note error:', err);
+    }
+  }, []);
+
+  const deleteNote = useCallback(async (id) => {
+    try {
+      await api.delete(`/notes/${id}`);
+      setNotes(prev => prev.filter(n => n.id !== id));
+    } catch (err) {
+      console.error('Delete note error:', err);
+    }
+  }, []);
+
+  const togglePin = useCallback(async (id) => {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+    try {
+      const updated = await api.put(`/notes/${id}`, { pinned: !note.pinned });
+      setNotes(prev => prev.map(n => n.id === id ? updated : n));
+    } catch (err) {
+      console.error('Toggle pin error:', err);
+    }
   }, [notes]);
 
-  const addNote = useCallback((note) => {
-    setNotes(prev => [{
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tags: [],
-      pinned: false,
-      color: null,
-      ...note,
-    }, ...prev]);
+  const duplicateNote = useCallback(async (id) => {
+    try {
+      const created = await api.post(`/notes/${id}/duplicate`);
+      setNotes(prev => [created, ...prev]);
+    } catch (err) {
+      console.error('Duplicate note error:', err);
+    }
   }, []);
 
-  const updateNote = useCallback((id, updates) => {
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n));
-  }, []);
-
-  const deleteNote = useCallback((id) => {
-    setNotes(prev => prev.filter(n => n.id !== id));
-  }, []);
-
-  const togglePin = useCallback((id) => {
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, pinned: !n.pinned } : n));
-  }, []);
-
-  const duplicateNote = useCallback((id) => {
-    setNotes(prev => {
-      const note = prev.find(n => n.id === id);
-      if (!note) return prev;
-      return [{
-        ...note,
-        id: generateId(),
-        title: `${note.title} (copy)`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        pinned: false,
-      }, ...prev];
-    });
-  }, []);
-
-  const clearAllNotes = useCallback(() => {
+  const clearAllNotes = useCallback(async () => {
+    for (const note of notes) {
+      try { await api.delete(`/notes/${note.id}`); } catch {}
+    }
     setNotes([]);
-  }, []);
+  }, [notes]);
 
   const allTags = [...new Set(notes.flatMap(n => n.tags || []))];
 
@@ -64,7 +87,7 @@ export function NotesProvider({ children }) {
   });
 
   return (
-    <NotesContext.Provider value={{ notes: sortedNotes, addNote, updateNote, deleteNote, togglePin, duplicateNote, clearAllNotes, allTags }}>
+    <NotesContext.Provider value={{ notes: sortedNotes, addNote, updateNote, deleteNote, togglePin, duplicateNote, clearAllNotes, allTags, loading }}>
       {children}
     </NotesContext.Provider>
   );

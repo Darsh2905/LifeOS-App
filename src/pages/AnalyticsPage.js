@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import BentoCard from '../components/BentoCard';
@@ -6,7 +7,8 @@ import { useTimer } from '../context/TimerContext';
 import { useFinance } from '../context/FinanceContext';
 import { TASK_STATES } from '../utils/constants';
 import { formatRupees } from '../utils/helpers';
-import { TrendingUp, TrendingDown, CheckCircle2, Clock, Target, Wallet } from 'lucide-react';
+import { api } from '../utils/api';
+import { TrendingUp, TrendingDown, CheckCircle2, Clock, Target, Wallet, Brain, Sparkles, Activity, Loader2 } from 'lucide-react';
 
 const CHART_COLORS = ['var(--accent-color)', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -28,6 +30,236 @@ function CustomTooltip({ active, payload, label, valueFormatter = value => value
         </p>
       ))}
     </div>
+  );
+}
+
+/* ── Productivity Trends (server-side) ── */
+function ProductivityTrends() {
+  const [trends, setTrends] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState(14);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/insights/trends?range=${range}`)
+      .then(data => setTrends(data.trends || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [range]);
+
+  if (loading) {
+    return (
+      <BentoCard delay={0.7}>
+        <div className="flex items-center justify-center h-48">
+          <Loader2 size={20} className="animate-spin text-purple-400" />
+        </div>
+      </BentoCard>
+    );
+  }
+
+  return (
+    <BentoCard delay={0.7}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">Productivity Score Trend</h3>
+        <div className="flex items-center gap-1">
+          {[7, 14, 30].map(r => (
+            <motion.button
+              key={r}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setRange(r)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${
+                range === r ? 'bg-purple-500/15 text-purple-300' : 'text-[var(--color-text-muted)] hover:bg-white/5'
+              }`}
+            >
+              {r}d
+            </motion.button>
+          ))}
+        </div>
+      </div>
+      {trends.length > 0 ? (
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={trends}>
+            <defs>
+              <linearGradient id="prodGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="date" axisLine={false} tickLine={false}
+              tick={{ fill: 'var(--color-text-muted)', fontSize: 9 }}
+              tickFormatter={d => new Date(d).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
+              interval={Math.max(0, Math.floor(trends.length / 7) - 1)}
+            />
+            <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
+            <Tooltip content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const d = payload[0].payload;
+              return (
+                <div className="px-3 py-2 rounded-lg bg-[var(--color-surface-card)] border border-[var(--color-glass-border)] shadow-xl">
+                  <p className="text-xs text-[var(--color-text-muted)]">{d.date}</p>
+                  <p className="text-sm font-bold text-purple-400">{d.productivityScore}/100</p>
+                  {d.mood && <p className="text-xs">{d.mood} mood</p>}
+                  {d.habitRate > 0 && <p className="text-[10px] text-[var(--color-text-muted)]">{d.habitRate}% habits</p>}
+                </div>
+              );
+            }} />
+            <Area type="monotone" dataKey="productivityScore" stroke="#8b5cf6" fill="url(#prodGrad)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      ) : (
+        <p className="text-sm text-[var(--color-text-muted)] text-center py-8">No trend data available</p>
+      )}
+    </BentoCard>
+  );
+}
+
+/* ── AI Mood & Productivity Insights ── */
+function AIMoodInsights() {
+  const [insights, setInsights] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchInsights = useCallback(() => {
+    setLoading(true);
+    api.get('/ai/mood-insights')
+      .then(data => setInsights(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const confidenceColors = {
+    high: 'text-emerald-300 bg-emerald-500/10 ring-emerald-500/20',
+    medium: 'text-amber-300 bg-amber-500/10 ring-amber-500/20',
+    low: 'text-[var(--color-text-muted)] bg-white/5 ring-[var(--color-border)]',
+  };
+
+  return (
+    <BentoCard delay={0.75}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Brain size={15} className="text-purple-400" />
+          <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">AI Mood & Productivity Insights</h3>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+          onClick={fetchInsights}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold text-purple-300 bg-purple-500/10 hover:bg-purple-500/15 transition-all disabled:opacity-50"
+        >
+          {loading ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+          {loading ? 'Analyzing...' : insights ? 'Refresh' : 'Generate Insights'}
+        </motion.button>
+      </div>
+
+      {!insights && !loading && (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Activity size={28} className="text-purple-400/30 mb-2" />
+          <p className="text-xs text-[var(--color-text-muted)]">Click "Generate Insights" to analyze correlations between your mood, productivity, exercise, and sleep.</p>
+        </div>
+      )}
+
+      {insights && (
+        <div className="space-y-3">
+          {(insights.dataPoints || insights.rawCorrelations) && (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-[var(--color-border)] bg-white/[0.02] p-3">
+                <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Correlations</p>
+                <p className="text-lg font-bold text-[var(--color-text-primary)]">{Object.keys(insights.rawCorrelations || {}).length}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-white/[0.02] p-3">
+                <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Mood Logs</p>
+                <p className="text-lg font-bold text-[var(--color-text-primary)]">{insights.dataPoints?.journalDays || 0}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-white/[0.02] p-3">
+                <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Sleep Logs</p>
+                <p className="text-lg font-bold text-[var(--color-text-primary)]">{insights.dataPoints?.sleepDays || 0}</p>
+              </div>
+            </div>
+          )}
+          {insights.overallTrend && (
+            <div className="p-3 rounded-xl bg-purple-500/[0.05] border border-purple-500/10">
+              <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">{insights.overallTrend}</p>
+            </div>
+          )}
+          {(insights.insights || []).map((insight, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }}
+              className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/[0.02] transition-all"
+            >
+              <div className="w-6 h-6 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles size={11} className="text-purple-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-semibold text-[var(--color-text-primary)]">{insight.title}</span>
+                  <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-md ring-1 ${confidenceColors[insight.confidence] || confidenceColors.low}`}>
+                    {insight.confidence}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed">{insight.detail}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </BentoCard>
+  );
+}
+
+/* ── Weekly Score Card ── */
+function WeeklyScoreCard() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/insights/weekly')
+      .then(d => setData(d))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || !data) return null;
+
+  const deltaColor = data.delta > 0 ? 'text-emerald-400' : data.delta < 0 ? 'text-red-400' : 'text-[var(--color-text-muted)]';
+  const DeltaIcon = data.delta >= 0 ? TrendingUp : TrendingDown;
+
+  return (
+    <BentoCard delay={0.72}>
+      <div className="flex items-center gap-2 mb-3">
+        <Activity size={15} className="text-purple-400" />
+        <h3 className="text-sm font-medium text-[var(--color-text-secondary)]">This Week's Score</h3>
+      </div>
+      <div className="flex items-end gap-4 mb-3">
+        <span className="text-4xl font-bold text-[var(--color-text-primary)]">{data.avgProductivityScore}</span>
+        <span className="text-xs text-[var(--color-text-muted)] mb-1">/100 avg</span>
+        <span className={`flex items-center gap-1 text-xs font-semibold ${deltaColor} mb-1 ml-auto`}>
+          <DeltaIcon size={12} />
+          {data.delta > 0 ? '+' : ''}{data.delta} vs last week
+        </span>
+      </div>
+      {/* Mini daily bars */}
+      <div className="flex items-end gap-1.5 h-16">
+        {(data.dailyScores || []).map((day, i) => {
+          const pct = Math.max(day.score, 3);
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <motion.div
+                initial={{ height: 0 }}
+                animate={{ height: `${pct}%` }}
+                transition={{ delay: 0.8 + i * 0.05, duration: 0.5 }}
+                className="w-full rounded-t-md"
+                style={{ background: day.score >= 70 ? '#22c55e' : day.score >= 40 ? '#f59e0b' : '#ef4444', minHeight: 3 }}
+              />
+              <span className="text-[8px] text-[var(--color-text-muted)]">
+                {new Date(day.date).toLocaleDateString('en', { weekday: 'narrow' })}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </BentoCard>
   );
 }
 
@@ -280,6 +512,23 @@ export default function AnalyticsPage() {
             )}
           </BentoCard>
         </div>
+      </div>
+
+      {/* ── Wellness & Productivity Intelligence ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-5 h-0.5 bg-purple-500 rounded-full" />
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Wellness & Productivity Intelligence</h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+          <div className="lg:col-span-2">
+            <ProductivityTrends />
+          </div>
+          <WeeklyScoreCard />
+        </div>
+
+        <AIMoodInsights />
       </div>
     </motion.div>
   );

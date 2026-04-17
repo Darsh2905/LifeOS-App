@@ -7,8 +7,18 @@ import { NotesProvider } from './context/NotesContext';
 import { TimerProvider } from './context/TimerContext';
 import { FocusProvider } from './context/FocusContext';
 import { FinanceProvider } from './context/FinanceContext';
+import { HabitsProvider } from './context/HabitsContext';
+import { JournalProvider } from './context/JournalContext';
+import { WorkoutProvider } from './context/WorkoutContext';
+import { MealProvider } from './context/MealContext';
+import { SleepProvider } from './context/SleepContext';
+import { PlannerProvider } from './context/PlannerContext';
+import { WaterProvider } from './context/WaterContext';
+import { BooksProvider } from './context/BooksContext';
 import Sidebar from './components/Sidebar';
 import CommandPalette from './components/CommandPalette';
+import AuroraBackground from './components/AuroraBackground';
+import CursorSpotlight from './components/CursorSpotlight';
 import Dashboard from './pages/Dashboard';
 import TasksPage from './pages/TasksPage';
 import TimerPage from './pages/TimerPage';
@@ -17,6 +27,9 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import FinancePage from './pages/FinancePage';
 import FocusMode from './pages/FocusMode';
+import DailyPlanner from './pages/DailyPlanner';
+import WellnessPage from './pages/WellnessPage';
+import AdminPage from './pages/AdminPage';
 import AuthPage from './pages/AuthPage';
 
 const pages = {
@@ -27,6 +40,9 @@ const pages = {
   finance: FinancePage,
   analytics: AnalyticsPage,
   settings: SettingsPage,
+  planner: DailyPlanner,
+  wellness: WellnessPage,
+  admin: AdminPage,
 };
 
 function AppContent() {
@@ -40,7 +56,9 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-surface-dark)] transition-colors duration-300 noise-overlay">
+    <div className="relative min-h-screen bg-[var(--color-surface-dark)] transition-colors duration-300 noise-overlay">
+      <AuroraBackground />
+      <CursorSpotlight />
       <Sidebar activePage={activePage} onNavigate={handleNavigate} />
       <CommandPalette activePage={activePage} onNavigate={handleNavigate} />
       <main className="pl-[92px]">
@@ -104,7 +122,23 @@ function AuthGate() {
               <TimerProvider>
                 <FocusProvider>
                   <FinanceProvider>
-                    <AppContent />
+                    <HabitsProvider>
+                      <JournalProvider>
+                        <WorkoutProvider>
+                          <MealProvider>
+                            <SleepProvider>
+                              <PlannerProvider>
+                                <WaterProvider>
+                                  <BooksProvider>
+                                    <AppContent />
+                                  </BooksProvider>
+                                </WaterProvider>
+                              </PlannerProvider>
+                            </SleepProvider>
+                          </MealProvider>
+                        </WorkoutProvider>
+                      </JournalProvider>
+                    </HabitsProvider>
                   </FinanceProvider>
                 </FocusProvider>
               </TimerProvider>

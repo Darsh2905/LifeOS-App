@@ -1,34 +1,31 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { storage } from '../utils/storage';
+import { api } from '../utils/api';
+import { useAuth } from './AuthContext';
 import { getTodayKey } from '../utils/helpers';
 
 const TimerContext = createContext();
 
-const OLD_DEFAULT_FOCUS = 25 * 60;
 const DEFAULT_FOCUS = 60 * 60;
 const DEFAULT_BREAK = 5 * 60;
 
-function getInitialFocusDuration() {
-  const stored = storage.get('lifeos-focus-duration', null);
-
-  if (stored === null || stored === OLD_DEFAULT_FOCUS) return DEFAULT_FOCUS;
-  return stored;
-}
-
 export function TimerProvider({ children }) {
-  const [focusDuration, setFocusDuration] = useState(getInitialFocusDuration);
+  const { isAuthenticated } = useAuth();
+  const [focusDuration, setFocusDuration] = useState(() => storage.get('lifeos-focus-duration', DEFAULT_FOCUS));
   const [breakDuration, setBreakDuration] = useState(() => storage.get('lifeos-break-duration', DEFAULT_BREAK));
   const [timeLeft, setTimeLeft] = useState(focusDuration);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
-  const [sessions, setSessions] = useState(() => storage.get('lifeos-sessions', {}));
+  const [sessions, setSessions] = useState({});
   const intervalRef = useRef(null);
 
-  const todaySessions = sessions[getTodayKey()] || 0;
-
+  // Fetch sessions from backend
   useEffect(() => {
-    storage.set('lifeos-sessions', sessions);
-  }, [sessions]);
+    if (!isAuthenticated) return;
+    api.get('/timer/sessions').then(setSessions).catch(() => {});
+  }, [isAuthenticated]);
+
+  const todaySessions = sessions[getTodayKey()] || 0;
 
   useEffect(() => {
     storage.set('lifeos-focus-duration', focusDuration);
@@ -46,8 +43,13 @@ export function TimerProvider({ children }) {
     } else if (timeLeft === 0) {
       clearInterval(intervalRef.current);
       if (!isBreak) {
-        const today = getTodayKey();
-        setSessions(prev => ({ ...prev, [today]: (prev[today] || 0) + 1 }));
+        // Record session to backend
+        api.post('/timer/sessions', { date: getTodayKey(), focusDuration })
+          .then(setSessions)
+          .catch(() => {
+            // Fallback to local update
+            setSessions(prev => ({ ...prev, [getTodayKey()]: (prev[getTodayKey()] || 0) + 1 }));
+          });
         setIsBreak(true);
         setTimeLeft(breakDuration);
         setIsRunning(false);
@@ -73,7 +75,6 @@ export function TimerProvider({ children }) {
   const setCustomFocus = useCallback((minutes) => {
     const parsedMinutes = Number(minutes);
     if (!Number.isFinite(parsedMinutes)) return;
-
     const secs = Math.max(60, Math.round(parsedMinutes * 60));
     setFocusDuration(secs);
     if (!isRunning && !isBreak) setTimeLeft(secs);
@@ -82,7 +83,6 @@ export function TimerProvider({ children }) {
   const setCustomBreak = useCallback((minutes) => {
     const parsedMinutes = Number(minutes);
     if (!Number.isFinite(parsedMinutes)) return;
-
     const secs = Math.max(60, Math.round(parsedMinutes * 60));
     setBreakDuration(secs);
   }, []);

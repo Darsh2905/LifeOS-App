@@ -1,11 +1,21 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotes } from '../context/NotesContext';
+import RichTextEditor from '../components/RichTextEditor';
+import { api } from '../utils/api';
 import {
   Plus, Search, Tag, Trash2, X, Pin, PinOff,
   Copy, ChevronLeft, Save, Palette, StickyNote,
-  Clock, FileText, ArrowUpDown, Hash
+  Clock, FileText, ArrowUpDown, Hash, Sparkles, Loader2
 } from 'lucide-react';
+
+function htmlToText(html) {
+  if (!html) return '';
+  if (!/<[a-z][\s\S]*>/i.test(html)) return html;
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return (div.textContent || div.innerText || '').trim();
+}
 
 const TAG_COLORS = [
   'bg-indigo-500/20 text-indigo-300 border-indigo-500/20',
@@ -60,8 +70,9 @@ function formatRelativeTime(dateStr) {
 }
 
 function wordCount(text) {
-  if (!text || !text.trim()) return 0;
-  return text.trim().split(/\s+/).length;
+  const plain = htmlToText(text || '');
+  if (!plain.trim()) return 0;
+  return plain.trim().split(/\s+/).length;
 }
 
 /* ── Note Editor (split pane right side) ── */
@@ -73,16 +84,16 @@ function NoteEditor({ note, onSave, onClose, isNew }) {
   const [color, setColor] = useState(note?.color || null);
   const [showColors, setShowColors] = useState(false);
   const titleRef = useRef(null);
-  const contentRef = useRef(null);
   const [hasUnsaved, setHasUnsaved] = useState(false);
+  const [aiSummary, setAiSummary] = useState(null);
+  const [aiSummarizing, setAiSummarizing] = useState(false);
 
   useEffect(() => {
     if (isNew && titleRef.current) titleRef.current.focus();
-    else if (contentRef.current) contentRef.current.focus();
   }, [isNew]);
 
-  const handleContentChange = (e) => {
-    setContent(e.target.value);
+  const handleContentChange = (html) => {
+    setContent(html);
     setHasUnsaved(true);
   };
 
@@ -101,15 +112,39 @@ function NoteEditor({ note, onSave, onClose, isNew }) {
   };
 
   const handleSave = useCallback(() => {
-    if (!title.trim() && !content.trim()) return;
+    const plain = htmlToText(content);
+    if (!title.trim() && !plain) return;
     onSave({
       title: title.trim() || 'Untitled',
-      content: content.trim(),
+      content: plain ? content : '',
       tags,
       color,
     });
     setHasUnsaved(false);
   }, [title, content, tags, color, onSave]);
+
+  const summarizeWithAI = async () => {
+    const plain = htmlToText(content);
+    if (!plain.trim()) return;
+    setAiSummarizing(true);
+    setAiSummary(null);
+    try {
+      const result = await api.post('/ai/summarize-note', { title, content: plain });
+      setAiSummary(result);
+      // Auto-apply suggested tags (merge, don't replace)
+      if (result.tags && result.tags.length > 0) {
+        const newTags = result.tags.filter(t => !tags.includes(t.toLowerCase())).map(t => t.toLowerCase());
+        if (newTags.length > 0) {
+          setTags(prev => [...prev, ...newTags]);
+          setHasUnsaved(true);
+        }
+      }
+    } catch (err) {
+      console.error('AI summarize error:', err);
+    } finally {
+      setAiSummarizing(false);
+    }
+  };
 
   useEffect(() => {
     const handler = (e) => {
@@ -122,15 +157,8 @@ function NoteEditor({ note, onSave, onClose, isNew }) {
     return () => window.removeEventListener('keydown', handler);
   }, [handleSave]);
 
-  useEffect(() => {
-    if (contentRef.current) {
-      contentRef.current.style.height = 'auto';
-      contentRef.current.style.height = contentRef.current.scrollHeight + 'px';
-    }
-  }, [content]);
-
   const words = wordCount(content);
-  const chars = content.length;
+  const chars = htmlToText(content).length;
   const readTime = Math.max(1, Math.ceil(words / 200));
 
   return (
@@ -160,6 +188,16 @@ function NoteEditor({ note, onSave, onClose, isNew }) {
               Unsaved changes
             </motion.span>
           )}
+          <motion.button
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+            onClick={summarizeWithAI}
+            disabled={aiSummarizing || !htmlToText(content).trim()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm transition-all text-purple-400 bg-purple-500/10 hover:bg-purple-500/15 disabled:opacity-40"
+            title="AI Summarize & Auto-tag"
+          >
+            {aiSummarizing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            <span className="text-xs font-medium">AI</span>
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
             onClick={() => setShowColors(!showColors)}
@@ -205,6 +243,62 @@ function NoteEditor({ note, onSave, onClose, isNew }) {
         )}
       </AnimatePresence>
 
+      {/* AI Summary Panel */}
+      <AnimatePresence>
+        {aiSummary && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-3 rounded-2xl border border-purple-500/15 bg-gradient-to-br from-purple-500/[0.06] to-violet-500/[0.02] p-4 flex-shrink-0"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Sparkles size={13} className="text-purple-400" />
+                <span className="text-xs font-semibold text-purple-300">AI Summary</span>
+              </div>
+              <motion.button whileTap={{ scale: 0.8 }} onClick={() => setAiSummary(null)}
+                className="p-1 rounded hover:bg-white/5 text-[var(--color-text-muted)]">
+                <X size={11} />
+              </motion.button>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed mb-2">{aiSummary.summary}</p>
+            {aiSummary.keyPoints && aiSummary.keyPoints.length > 0 && (
+              <div className="space-y-1 mb-2">
+                <span className="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)] font-semibold">Key Points</span>
+                {aiSummary.keyPoints.map((point, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <div className="w-1 h-1 rounded-full bg-purple-400 mt-1.5 shrink-0" />
+                    <span className="text-xs text-[var(--color-text-secondary)]">{point}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {aiSummary.actionItems && aiSummary.actionItems.length > 0 && (
+              <div className="space-y-1.5 mb-2.5">
+                <span className="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)] font-semibold">Action Items</span>
+                {aiSummary.actionItems.map((item, i) => (
+                  <div key={i} className="flex items-start gap-2 rounded-lg border border-purple-500/10 bg-white/[0.02] px-2.5 py-2">
+                    <div className="w-4 h-4 rounded-md border border-purple-400/40 flex items-center justify-center mt-0.5 shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                    </div>
+                    <span className="text-xs text-[var(--color-text-secondary)]">{item}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {aiSummary.tags && aiSummary.tags.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[9px] text-[var(--color-text-muted)]">Auto-tagged:</span>
+                {aiSummary.tags.map(tag => (
+                  <span key={tag} className="text-[9px] px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 font-medium">{tag}</span>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Editor Body */}
       <div
         className="flex-1 rounded-2xl border border-[var(--color-border)] overflow-y-auto transition-colors duration-300"
@@ -225,12 +319,10 @@ function NoteEditor({ note, onSave, onClose, isNew }) {
             <span className="flex items-center gap-1"><Clock size={10} />~{readTime} min read</span>
           </div>
           <div className="w-full h-px bg-[var(--color-border)] mb-5" />
-          <textarea
-            ref={contentRef}
-            value={content}
+          <RichTextEditor
+            content={content}
             onChange={handleContentChange}
             placeholder="Start writing your thoughts..."
-            className="w-full bg-transparent text-sm text-[var(--color-text-secondary)] placeholder:text-[var(--color-text-muted)]/30 outline-none resize-none leading-[1.8] min-h-[400px]"
           />
         </div>
       </div>
@@ -288,7 +380,7 @@ function NoteListItem({ note, index, isActive, onSelect, onDelete, onTogglePin }
             {note.title || 'Untitled'}
           </h4>
           <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 leading-relaxed mb-1.5">
-            {note.content || 'Empty note'}
+            {htmlToText(note.content) || 'Empty note'}
           </p>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-[var(--color-text-muted)] opacity-60">
@@ -354,7 +446,7 @@ export default function NotesPage() {
       const q = searchQuery.toLowerCase();
       result = result.filter(n =>
         n.title.toLowerCase().includes(q) ||
-        (n.content || '').toLowerCase().includes(q) ||
+        htmlToText(n.content || '').toLowerCase().includes(q) ||
         (n.tags || []).some(t => t.includes(q))
       );
     }
@@ -704,7 +796,7 @@ function NoteCard({ note, index, onEdit, onDelete, onTogglePin, onDuplicate }) {
         </h3>
 
         <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed line-clamp-3 mb-3">
-          {note.content || 'Empty note'}
+          {htmlToText(note.content) || 'Empty note'}
         </p>
 
         {(note.tags || []).length > 0 && (

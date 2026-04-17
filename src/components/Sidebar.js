@@ -1,14 +1,16 @@
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, ListTodo, Clock, StickyNote, BarChart3,
-  Settings, Crosshair, Sun, Moon, LogOut, Sparkles, Wallet
+  Settings, Crosshair, Sun, Moon, LogOut, Sparkles, Wallet, CalendarCheck, Heart, Shield
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFocus } from '../context/FocusContext';
 import { useAuth } from '../context/AuthContext';
 
-const navItems = [
+const baseNavItems = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { id: 'planner', icon: CalendarCheck, label: 'Planner' },
+  { id: 'wellness', icon: Heart, label: 'Wellness' },
   { id: 'finance', icon: Wallet, label: 'Finance' },
   { id: 'tasks', icon: ListTodo, label: 'Tasks' },
   { id: 'timer', icon: Clock, label: 'Timer' },
@@ -20,7 +22,10 @@ const navItems = [
 export default function Sidebar({ activePage, onNavigate }) {
   const { isDark, toggleTheme } = useTheme();
   const { enterFocus } = useFocus();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const navItems = user?.role === 'admin'
+    ? [...baseNavItems, { id: 'admin', icon: Shield, label: 'Admin' }]
+    : baseNavItems;
 
   return (
     <motion.aside
@@ -28,7 +33,8 @@ export default function Sidebar({ activePage, onNavigate }) {
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       className="fixed left-0 top-0 bottom-0 w-[84px] flex flex-col items-center py-5 z-40
-        bg-[var(--color-surface-darker)]/80 backdrop-blur-xl border-r border-[var(--color-border)]"
+        bg-[var(--color-surface-darker)]/60 backdrop-blur-2xl border-r border-[var(--color-border)]
+        shadow-[inset_-1px_0_0_rgba(255,255,255,0.03),0_0_40px_rgba(0,0,0,0.15)]"
     >
       {/* Brand */}
       <motion.button
@@ -60,23 +66,35 @@ export default function Sidebar({ activePage, onNavigate }) {
               whileHover={{ scale: 1.12 }}
               whileTap={{ scale: 0.88 }}
               onClick={() => onNavigate(id)}
-              title={label}
               className={`
-                relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300
+                group relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300
                 ${isActive
-                  ? 'bg-purple-500/15 text-purple-400'
+                  ? 'text-white'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-white/5'
                 }
               `}
             >
               {isActive && (
-                <motion.div
-                  layoutId="activeNavIndicator"
-                  className="absolute -left-[13px] w-1 h-5 rounded-r-full bg-purple-500"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
+                <>
+                  <motion.div
+                    layoutId="activeNavBg"
+                    className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg shadow-purple-500/30"
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  />
+                  <motion.div
+                    layoutId="activeNavIndicator"
+                    className="absolute -left-[14px] w-1 h-6 rounded-r-full bg-gradient-to-b from-purple-400 to-violet-500"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                  <motion.div
+                    layoutId="activeNavGlow"
+                    className="absolute inset-0 rounded-xl opacity-40 blur-xl bg-purple-500"
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  />
+                </>
               )}
-              <Icon size={19} strokeWidth={isActive ? 2.2 : 1.8} />
+              <Icon size={19} strokeWidth={isActive ? 2.2 : 1.8} className="relative z-10" />
+              <span className="sidebar-tooltip">{label}</span>
             </motion.button>
           );
         })}
@@ -87,17 +105,16 @@ export default function Sidebar({ activePage, onNavigate }) {
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.88 }}
           onClick={() => enterFocus()}
-          title="Focus Mode"
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+          className="group relative w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-purple-400 hover:bg-purple-500/10 transition-all"
         >
           <Crosshair size={19} strokeWidth={1.8} />
+          <span className="sidebar-tooltip">Focus</span>
         </motion.button>
         <motion.button
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.88 }}
           onClick={toggleTheme}
-          title="Toggle theme"
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-white/5 transition-all"
+          className="group relative w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-white/5 transition-all"
         >
           <motion.div
             animate={{ rotate: isDark ? 0 : 180 }}
@@ -105,15 +122,16 @@ export default function Sidebar({ activePage, onNavigate }) {
           >
             {isDark ? <Sun size={19} strokeWidth={1.8} /> : <Moon size={19} strokeWidth={1.8} />}
           </motion.div>
+          <span className="sidebar-tooltip">{isDark ? 'Light mode' : 'Dark mode'}</span>
         </motion.button>
         <motion.button
           whileHover={{ scale: 1.12 }}
           whileTap={{ scale: 0.88 }}
           onClick={logout}
-          title="Sign out"
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all"
+          className="group relative w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all"
         >
           <LogOut size={19} strokeWidth={1.8} />
+          <span className="sidebar-tooltip">Sign out</span>
         </motion.button>
       </div>
     </motion.aside>

@@ -1,15 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { storage } from '../utils/storage';
-import { generateId, getTodayKey } from '../utils/helpers';
+import { api } from '../utils/api';
+import { useAuth } from './AuthContext';
 import { TASK_STATES } from '../utils/constants';
+import { getTodayKey } from '../utils/helpers';
 
 const TaskContext = createContext();
-
-function getInitialTasks() {
-  const saved = storage.get('lifeos-tasks', null);
-  if (saved && Array.isArray(saved)) return saved;
-  return [];
-}
 
 function addDays(date, days) {
   const next = new Date(date);
@@ -56,50 +51,85 @@ function getNextDueDate(dueDate, recurring) {
 }
 
 export function TaskProvider({ children }) {
-  const [tasks, setTasks] = useState(getInitialTasks);
+  const { isAuthenticated } = useAuth();
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    storage.set('lifeos-tasks', tasks);
+  // Fetch tasks from backend
+  const refresh = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const data = await api.get('/tasks');
+      setTasks(data);
+    } catch (err) {
+      console.error('Tasks fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const addTask = useCallback(async (task) => {
+    try {
+      const created = await api.post('/tasks', task);
+      setTasks(prev => [created, ...prev]);
+    } catch (err) {
+      console.error('Add task error:', err);
+    }
+  }, []);
+
+  const updateTask = useCallback(async (id, updates) => {
+    try {
+      const updated = await api.put(`/tasks/${id}`, updates);
+      setTasks(prev => prev.map(t => t.id === id ? updated : t));
+    } catch (err) {
+      console.error('Update task error:', err);
+    }
+  }, []);
+
+  const completeTask = useCallback(async (id) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    if (task.recurring && task.recurring !== 'none') {
+      const updates = {
+        status: TASK_STATES.TODO,
+        dueDate: getNextDueDate(task.dueDate, task.recurring),
+        lastCompletedAt: new Date().toISOString(),
+      };
+      try {
+        const updated = await api.put(`/tasks/${id}`, updates);
+        setTasks(prev => prev.map(t => t.id === id ? updated : t));
+      } catch (err) {
+        console.error('Complete task error:', err);
+      }
+    } else {
+      try {
+        const updated = await api.put(`/tasks/${id}`, { status: TASK_STATES.DONE, lastCompletedAt: new Date().toISOString() });
+        setTasks(prev => prev.map(t => t.id === id ? updated : t));
+      } catch (err) {
+        console.error('Complete task error:', err);
+      }
+    }
   }, [tasks]);
 
-  const addTask = useCallback((task) => {
-    setTasks(prev => [...prev, {
-      id: generateId(),
-      createdAt: getTodayKey(),
-      status: TASK_STATES.TODO,
-      category: 'Work',
-      ...task,
-    }]);
+  const deleteTask = useCallback(async (id) => {
+    try {
+      await api.delete(`/tasks/${id}`);
+      setTasks(prev => prev.filter(t => t.id !== id));
+    } catch (err) {
+      console.error('Delete task error:', err);
+    }
   }, []);
 
-  const updateTask = useCallback((id, updates) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-  }, []);
-
-  const completeTask = useCallback((id) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id !== id) return task;
-
-      if (task.recurring && task.recurring !== 'none') {
-        return {
-          ...task,
-          status: TASK_STATES.TODO,
-          dueDate: getNextDueDate(task.dueDate, task.recurring),
-          lastCompletedAt: new Date().toISOString(),
-        };
-      }
-
-      return { ...task, status: TASK_STATES.DONE, lastCompletedAt: new Date().toISOString() };
-    }));
-  }, []);
-
-  const deleteTask = useCallback((id) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-  }, []);
-
-  const clearAllTasks = useCallback(() => {
+  const clearAllTasks = useCallback(async () => {
+    // Delete all tasks one by one (for safety)
+    for (const task of tasks) {
+      try { await api.delete(`/tasks/${task.id}`); } catch {}
+    }
     setTasks([]);
-  }, []);
+  }, [tasks]);
 
   const todayTasks = tasks.filter(t => t.createdAt === getTodayKey());
   const completedToday = todayTasks.filter(t => t.status === TASK_STATES.DONE).length;
@@ -109,7 +139,7 @@ export function TaskProvider({ children }) {
   return (
     <TaskContext.Provider value={{
       tasks, addTask, updateTask, completeTask, deleteTask, clearAllTasks,
-      todayTasks, completedToday, totalToday, completionRate,
+      todayTasks, completedToday, totalToday, completionRate, loading,
     }}>
       {children}
     </TaskContext.Provider>

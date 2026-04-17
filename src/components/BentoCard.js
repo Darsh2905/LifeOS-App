@@ -1,23 +1,57 @@
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { useRef } from 'react';
 
-export default function BentoCard({ children, className = '', delay = 0, noPadding = false }) {
+export default function BentoCard({
+  children,
+  className = '',
+  delay = 0,
+  noPadding = false,
+  tilt = true,
+  glass = true,
+  premium = false,
+}) {
+  const ref = useRef(null);
+  const mx = useMotionValue(0.5);
+  const my = useMotionValue(0.5);
+
+  const rotateX = useSpring(useTransform(my, [0, 1], [3, -3]), { stiffness: 180, damping: 20 });
+  const rotateY = useSpring(useTransform(mx, [0, 1], [-3, 3]), { stiffness: 180, damping: 20 });
+
+  const handleMove = (e) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    mx.set(px);
+    my.set(py);
+    el.style.setProperty('--mx', `${px * 100}%`);
+    el.style.setProperty('--my', `${py * 100}%`);
+  };
+
+  const handleLeave = () => {
+    mx.set(0.5);
+    my.set(0.5);
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      ref={ref}
+      initial={{ opacity: 0, y: 22, scale: 0.985 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -3, boxShadow: '0 20px 50px rgba(0,0,0,0.25), 0 0 20px rgba(147,51,234,0.06), inset 0 1px 0 rgba(255,255,255,0.04)' }}
+      transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
+      onMouseMove={tilt ? handleMove : undefined}
+      onMouseLeave={tilt ? handleLeave : undefined}
+      style={tilt ? { rotateX, rotateY, transformPerspective: 1000 } : undefined}
       className={`
+        magnetic-card card-hover shimmer-border
         rounded-2xl border border-[var(--color-border)]
-        bg-[var(--color-surface-card)] backdrop-blur-sm
-        shadow-lg shadow-black/5
-        transition-all duration-300
+        ${premium ? 'glass-premium' : glass ? 'glass-card' : 'bg-[var(--color-surface-card)]'}
         ${noPadding ? '' : 'p-5'}
         ${className}
       `}
-      style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}
     >
-      {children}
+      <div style={{ transform: 'translateZ(0)' }}>{children}</div>
     </motion.div>
   );
 }

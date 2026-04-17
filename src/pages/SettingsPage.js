@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../context/TaskContext';
 import { useNotes } from '../context/NotesContext';
 import { ACCENT_COLORS } from '../utils/constants';
-import { Sun, Moon, Palette, Check, RotateCcw, AlertTriangle, X, LogOut, User, Mail, Shield, ImageIcon } from 'lucide-react';
+import { Sun, Moon, Palette, Check, RotateCcw, AlertTriangle, X, LogOut, User, Mail, Shield, ImageIcon, Cloud, Brain, MapPin, CheckCircle2, XCircle } from 'lucide-react';
 import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 
 const IMAGE_THEMES = [
   { id: 'neon', label: '🌆 Neon', preview: '/images/hero-banner.png' },
@@ -24,6 +25,35 @@ export default function SettingsPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [imageTheme, setImageTheme] = useState(() => storage.get('lifeos-image-theme', 'neon'));
+  const [weatherCity, setWeatherCity] = useState('');
+  const [citySaving, setCitySaving] = useState(false);
+  const [citySaved, setCitySaved] = useState(false);
+  const [services, setServices] = useState({ ai: false, weather: false });
+
+  // Load settings and health status
+  useEffect(() => {
+    (async () => {
+      try {
+        const [settings, health] = await Promise.all([
+          api.get('/settings'),
+          fetch('/api/health').then(r => r.json()).catch(() => ({})),
+        ]);
+        if (settings.weather_city) setWeatherCity(settings.weather_city);
+        if (health.services) setServices(health.services);
+      } catch { /* silent */ }
+    })();
+  }, []);
+
+  const saveWeatherCity = async () => {
+    if (!weatherCity.trim()) return;
+    setCitySaving(true);
+    try {
+      await api.put('/settings', { key: 'weather_city', value: weatherCity.trim() });
+      setCitySaved(true);
+      setTimeout(() => setCitySaved(false), 2000);
+    } catch { /* silent */ }
+    finally { setCitySaving(false); }
+  };
 
   const switchImageTheme = (id) => {
     setImageTheme(id);
@@ -234,6 +264,81 @@ export default function SettingsPage() {
               </AnimatePresence>
             </motion.button>
           ))}
+        </div>
+      </motion.div>
+
+      {/* Weather & Location */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        whileHover={{ y: -1, boxShadow: '0 8px 30px rgba(0,0,0,0.15)' }}
+        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-card)] p-5"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <Cloud size={20} className="text-sky-400" />
+          <div>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">Weather & Location</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Set your city for the weather widget</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <input
+              value={weatherCity}
+              onChange={e => setWeatherCity(e.target.value)}
+              placeholder="e.g. Mumbai, London, New York"
+              onKeyDown={e => e.key === 'Enter' && saveWeatherCity()}
+              className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-white/[0.02] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/40 outline-none focus:border-purple-500/40 transition-colors"
+            />
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={saveWeatherCity}
+            disabled={citySaving || !weatherCity.trim()}
+            className="px-5 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg shadow-purple-500/20 disabled:opacity-40 transition-all flex items-center gap-2"
+          >
+            {citySaved ? <><Check size={14} /> Saved</> : citySaving ? 'Saving...' : 'Save'}
+          </motion.button>
+        </div>
+      </motion.div>
+
+      {/* AI & Services Status */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.22 }}
+        whileHover={{ y: -1, boxShadow: '0 8px 30px rgba(0,0,0,0.15)' }}
+        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-card)] p-5"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <Brain size={20} className="text-purple-400" />
+          <div>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">AI & Services</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Status of backend API integrations</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className={`flex items-center gap-3 p-3 rounded-xl border ${services.ai ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${services.ai ? 'bg-emerald-500/15' : 'bg-red-500/15'}`}>
+              {services.ai ? <CheckCircle2 size={16} className="text-emerald-400" /> : <XCircle size={16} className="text-red-400" />}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-primary)]">Local AI Engine</p>
+              <p className="text-[10px] text-[var(--color-text-muted)]">{services.ai ? 'Available' : 'Unavailable'}</p>
+            </div>
+          </div>
+          <div className={`flex items-center gap-3 p-3 rounded-xl border ${services.weather ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${services.weather ? 'bg-emerald-500/15' : 'bg-red-500/15'}`}>
+              {services.weather ? <CheckCircle2 size={16} className="text-emerald-400" /> : <XCircle size={16} className="text-red-400" />}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-primary)]">Weather</p>
+              <p className="text-[10px] text-[var(--color-text-muted)]">{services.weather ? 'Connected' : 'API key missing'}</p>
+            </div>
+          </div>
         </div>
       </motion.div>
 

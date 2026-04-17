@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { storage } from '../utils/storage';
-import { generateId } from '../utils/helpers';
+import { api } from '../utils/api';
+import { useAuth } from './AuthContext';
 
 const FinanceContext = createContext();
 
@@ -24,96 +24,220 @@ const INCOME_CATEGORIES = [
 ];
 
 export function FinanceProvider({ children }) {
-  const [transactions, setTransactions] = useState(() => storage.get('lifeos-finance', []));
-  const [budget, setBudget] = useState(() => storage.get('lifeos-budget', 0));
+  const { isAuthenticated } = useAuth();
+  const [transactions, setTransactions] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [savingsGoals, setSavingsGoals] = useState([]);
+  const [recurringTx, setRecurringTx] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    storage.set('lifeos-finance', transactions);
-  }, [transactions]);
+  // ── Fetch all data on auth ──
+  const refresh = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setLoading(true);
+    try {
+      const [txs, sum, accs, buds, goals, recs] = await Promise.all([
+        api.get('/transactions?limit=200'),
+        api.get('/transactions/summary?months=6'),
+        api.get('/accounts'),
+        api.get('/budgets'),
+        api.get('/savings'),
+        api.get('/recurring'),
+      ]);
+      setTransactions(txs);
+      setSummary(sum);
+      setAccounts(accs);
+      setBudgets(buds);
+      setSavingsGoals(goals);
+      setRecurringTx(recs);
+    } catch (err) {
+      console.error('Finance fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
-  useEffect(() => {
-    storage.set('lifeos-budget', budget);
-  }, [budget]);
+  useEffect(() => { refresh(); }, [refresh]);
 
-  const addTransaction = useCallback((tx) => {
-    setTransactions(prev => [{
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-      ...tx,
-    }, ...prev]);
+  // ── Transactions ──
+  const addTransaction = useCallback(async (tx) => {
+    const created = await api.post('/transactions', tx);
+    setTransactions(prev => [created, ...prev]);
+    // Refresh summary and accounts in background
+    Promise.all([
+      api.get('/transactions/summary?months=6').then(setSummary),
+      api.get('/accounts').then(setAccounts),
+      api.get('/budgets').then(setBudgets),
+    ]).catch(() => {});
+    return created;
   }, []);
 
-  const deleteTransaction = useCallback((id) => {
+  const updateTransaction = useCallback(async (id, updates) => {
+    const updated = await api.put(`/transactions/${id}`, updates);
+    setTransactions(prev => prev.map(t => t.id === id ? updated : t));
+    Promise.all([
+      api.get('/transactions/summary?months=6').then(setSummary),
+      api.get('/accounts').then(setAccounts),
+      api.get('/budgets').then(setBudgets),
+    ]).catch(() => {});
+    return updated;
+  }, []);
+
+  const deleteTransaction = useCallback(async (id) => {
+    await api.delete(`/transactions/${id}`);
     setTransactions(prev => prev.filter(t => t.id !== id));
+    Promise.all([
+      api.get('/transactions/summary?months=6').then(setSummary),
+      api.get('/accounts').then(setAccounts),
+      api.get('/budgets').then(setBudgets),
+    ]).catch(() => {});
   }, []);
 
-  const clearAll = useCallback(() => {
-    setTransactions([]);
+  const exportCSV = useCallback(async (month) => {
+    const csv = await api.get(`/transactions/export${month ? `?month=${month}` : ''}`);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lifeos-transactions-${month || 'all'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }, []);
 
-  const updateBudget = useCallback((amount) => {
-    setBudget(amount);
+  // ── Accounts ──
+  const addAccount = useCallback(async (acc) => {
+    const created = await api.post('/accounts', acc);
+    setAccounts(prev => [...prev, created]);
+    return created;
   }, []);
 
-  const currentMonthKey = useMemo(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const updateAccount = useCallback(async (id, updates) => {
+    const updated = await api.put(`/accounts/${id}`, updates);
+    setAccounts(prev => prev.map(a => a.id === id ? updated : a));
+    return updated;
   }, []);
 
-  const monthlyTransactions = useMemo(() =>
-    transactions.filter(t => t.createdAt.startsWith(currentMonthKey)),
-    [transactions, currentMonthKey]
-  );
+  const deleteAccount = useCallback(async (id) => {
+    await api.delete(`/accounts/${id}`);
+    setAccounts(prev => prev.filter(a => a.id !== id));
+  }, []);
 
-  const monthlyIncome = useMemo(() =>
-    monthlyTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0),
-    [monthlyTransactions]
-  );
+  // ── Budgets ──
+  const setBudget = useCallback(async (category, amount, month) => {
+    const result = await api.post('/budgets', { category, amount, month });
+    setBudgets(result);
+    return result;
+  }, []);
 
-  const monthlyExpenses = useMemo(() =>
-    monthlyTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0),
-    [monthlyTransactions]
-  );
+  const deleteBudget = useCallback(async (id) => {
+    await api.delete(`/budgets/${id}`);
+    setBudgets(prev => prev.filter(b => b.id !== id));
+  }, []);
 
-  const balance = monthlyIncome - monthlyExpenses;
+  // ── Savings Goals ──
+  const addSavingsGoal = useCallback(async (goal) => {
+    const created = await api.post('/savings', goal);
+    setSavingsGoals(prev => [created, ...prev]);
+    return created;
+  }, []);
 
-  // Spending by category (this month)
+  const updateSavingsGoal = useCallback(async (id, updates) => {
+    const updated = await api.put(`/savings/${id}`, updates);
+    setSavingsGoals(prev => prev.map(g => g.id === id ? updated : g));
+    return updated;
+  }, []);
+
+  const contributeSavings = useCallback(async (id, amount) => {
+    const updated = await api.put(`/savings/${id}/contribute`, { amount });
+    setSavingsGoals(prev => prev.map(g => g.id === id ? updated : g));
+    return updated;
+  }, []);
+
+  const deleteSavingsGoal = useCallback(async (id) => {
+    await api.delete(`/savings/${id}`);
+    setSavingsGoals(prev => prev.filter(g => g.id !== id));
+  }, []);
+
+  // ── Recurring Transactions ──
+  const addRecurring = useCallback(async (rec) => {
+    const created = await api.post('/recurring', rec);
+    setRecurringTx(prev => [created, ...prev]);
+    return created;
+  }, []);
+
+  const updateRecurring = useCallback(async (id, updates) => {
+    const updated = await api.put(`/recurring/${id}`, updates);
+    setRecurringTx(prev => prev.map(r => r.id === id ? updated : r));
+    return updated;
+  }, []);
+
+  const processRecurring = useCallback(async (id) => {
+    const result = await api.post(`/recurring/${id}/process`);
+    setTransactions(prev => [result.transaction, ...prev]);
+    setRecurringTx(prev => prev.map(r => r.id === id ? result.recurring : r));
+    Promise.all([
+      api.get('/transactions/summary?months=6').then(setSummary),
+      api.get('/accounts').then(setAccounts),
+    ]).catch(() => {});
+    return result;
+  }, []);
+
+  const deleteRecurring = useCallback(async (id) => {
+    await api.delete(`/recurring/${id}`);
+    setRecurringTx(prev => prev.filter(r => r.id !== id));
+  }, []);
+
+  // ── Derived data from summary ──
+  const monthlyIncome = summary?.monthlyIncome || 0;
+  const monthlyExpenses = summary?.monthlyExpenses || 0;
+  const balance = summary?.balance || 0;
+  const netWorth = summary?.netWorth || 0;
+  const savingsRate = summary?.savingsRate || 0;
+  const dailyAvg = summary?.dailyAvg || 0;
+  const monthlyTrend = summary?.monthlyTrend || [];
+  const topSpendingDay = summary?.topSpendingDay || null;
+
   const expensesByCategory = useMemo(() => {
-    const map = {};
-    monthlyTransactions
-      .filter(t => t.type === 'expense')
-      .forEach(t => {
-        map[t.category] = (map[t.category] || 0) + t.amount;
-      });
-    return EXPENSE_CATEGORIES
-      .map(cat => ({ ...cat, amount: map[cat.id] || 0 }))
-      .filter(c => c.amount > 0)
-      .sort((a, b) => b.amount - a.amount);
-  }, [monthlyTransactions]);
-
-  // Last 6 months trend
-  const monthlyTrend = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const monthTxs = transactions.filter(t => t.createdAt.startsWith(key));
-      const inc = monthTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-      const exp = monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-      return {
-        month: d.toLocaleDateString('en-US', { month: 'short' }),
-        income: inc,
-        expenses: exp,
-      };
+    if (!summary?.categoryBreakdown) return [];
+    return summary.categoryBreakdown.map(cb => {
+      const cat = EXPENSE_CATEGORIES.find(c => c.id === cb.category) || { label: cb.category, color: '#6b7280', icon: '📦' };
+      return { ...cat, amount: cb.total };
     });
+  }, [summary]);
+
+  const monthlyTransactions = useMemo(() => {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return transactions.filter(t => t.date?.startsWith(key));
   }, [transactions]);
+
+  const totalAccountBalance = useMemo(() =>
+    accounts.reduce((sum, a) => sum + (a.balance || 0), 0),
+    [accounts]
+  );
 
   return (
     <FinanceContext.Provider value={{
-      transactions, monthlyTransactions, addTransaction, deleteTransaction, clearAll,
-      monthlyIncome, monthlyExpenses, balance,
-      expensesByCategory, monthlyTrend,
-      budget, updateBudget,
+      // State
+      transactions, monthlyTransactions, accounts, budgets, savingsGoals, recurringTx, loading,
+      // Summary
+      monthlyIncome, monthlyExpenses, balance, netWorth, savingsRate, dailyAvg, monthlyTrend,
+      expensesByCategory, topSpendingDay, totalAccountBalance,
+      // Transaction actions
+      addTransaction, updateTransaction, deleteTransaction, exportCSV,
+      // Account actions
+      addAccount, updateAccount, deleteAccount,
+      // Budget actions
+      setBudget, deleteBudget,
+      // Savings goal actions
+      addSavingsGoal, updateSavingsGoal, contributeSavings, deleteSavingsGoal,
+      // Recurring actions
+      addRecurring, updateRecurring, processRecurring, deleteRecurring,
+      // Refresh
+      refresh,
+      // Constants
       EXPENSE_CATEGORIES, INCOME_CATEGORIES,
     }}>
       {children}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTasks } from '../context/TaskContext';
 import { useNotes } from '../context/NotesContext';
@@ -7,6 +8,10 @@ import { useTimer } from '../context/TimerContext';
 import { useFocus } from '../context/FocusContext';
 import { useFinance } from '../context/FinanceContext';
 import { useAuth } from '../context/AuthContext';
+import { useHabits } from '../context/HabitsContext';
+import { useJournal } from '../context/JournalContext';
+import { useWorkouts } from '../context/WorkoutContext';
+import { useMeals } from '../context/MealContext';
 import { CATEGORIES, OVERVIEW_TABS, PRIORITY_COLORS, TASK_STATES, QUOTES } from '../utils/constants';
 import { formatRupees, formatTime } from '../utils/helpers';
 import {
@@ -16,7 +21,9 @@ import {
   CalendarDays, Target, BookOpen,
   PenLine, Dumbbell, UtensilsCrossed, RefreshCw,
   Clock, ImageIcon, StickyNote, Pin, Pencil, X, Repeat2, AlertCircle,
-  Wallet, TrendingUp, TrendingDown
+  Wallet, TrendingUp, TrendingDown, Flame, Zap,
+  Cloud, CloudRain, CloudSnow, CloudLightning, Sun, CloudDrizzle, Wind, Droplets, Eye, Thermometer,
+  Brain, MessageCircle, Send, Lightbulb, ChevronDown, ChevronUp, Activity
 } from 'lucide-react';
 
 /* ── animation variants ── */
@@ -613,7 +620,7 @@ function CategoryCards({ currentTheme }) {
 }
 
 /* ── Empty State Component ── */
-function EmptyState({ icon: Icon, title, subtitle, action, onAction }) {
+export function EmptyState({ icon: Icon, title, subtitle, action, onAction }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -647,30 +654,18 @@ function EmptyState({ icon: Icon, title, subtitle, action, onAction }) {
 
 /* ── Tab Content Components ── */
 
-function JournalTab() {
-  const [entries, setEntries] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('lifeos-journal') || '[]'); } catch { return []; }
-  });
+export function JournalTab() {
+  const { entries, addEntry, deleteEntry } = useJournal();
   const [showForm, setShowForm] = useState(false);
   const [text, setText] = useState('');
   const [mood, setMood] = useState('😊');
 
-  const save = (data) => { localStorage.setItem('lifeos-journal', JSON.stringify(data)); };
-
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    const updated = [{ id: Date.now(), text: text.trim(), mood, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) }, ...entries];
-    setEntries(updated);
-    save(updated);
+    await addEntry(text.trim(), mood);
     setText('');
     setShowForm(false);
-  };
-
-  const deleteEntry = (id) => {
-    const updated = entries.filter(e => e.id !== id);
-    setEntries(updated);
-    save(updated);
   };
 
   if (entries.length === 0 && !showForm) {
@@ -685,6 +680,8 @@ function JournalTab() {
     );
   }
 
+  const moods = ['😊', '😐', '😔', '🔥', '😴', '🎉', '🧘', '💪'];
+
   return (
     <div className="p-4 space-y-3">
       <AnimatePresence>
@@ -694,19 +691,22 @@ function JournalTab() {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             onSubmit={handleAdd}
-            className="p-3 rounded-xl bg-white/[0.03] border border-[var(--color-border)] space-y-3"
+            className="p-4 rounded-xl bg-gradient-to-br from-purple-500/[0.04] to-violet-500/[0.02] border border-purple-500/10 space-y-3"
           >
-            <div className="flex gap-2 mb-2">
-              {['😊', '😐', '😔', '🔥', '😴', '🎉'].map(m => (
-                <button key={m} type="button" onClick={() => setMood(m)}
-                  className={`text-lg p-1 rounded-lg transition-all ${mood === m ? 'bg-purple-500/20 scale-110' : 'hover:bg-white/5'}`}>{m}</button>
+            <p className="text-[10px] uppercase tracking-widest text-purple-400/60 font-semibold">How are you feeling?</p>
+            <div className="flex gap-1.5 mb-2">
+              {moods.map(m => (
+                <motion.button key={m} type="button" onClick={() => setMood(m)}
+                  whileHover={{ scale: 1.2, y: -2 }}
+                  whileTap={{ scale: 0.85 }}
+                  className={`text-xl p-1.5 rounded-xl transition-all ${mood === m ? 'bg-purple-500/20 shadow-lg shadow-purple-500/10 ring-1 ring-purple-500/30' : 'hover:bg-white/5'}`}>{m}</motion.button>
               ))}
             </div>
-            <textarea value={text} onChange={e => setText(e.target.value)} placeholder="How was your day?" autoFocus rows={3}
-              className="w-full bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none resize-none border border-[var(--color-border)] rounded-lg px-3 py-2 focus:border-purple-500/50 transition-colors" />
+            <textarea value={text} onChange={e => setText(e.target.value)} placeholder="How was your day? What's on your mind?" autoFocus rows={3}
+              className="w-full bg-white/[0.02] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/40 outline-none resize-none border border-[var(--color-border)] rounded-xl px-4 py-3 focus:border-purple-500/40 transition-all leading-relaxed" />
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]">Cancel</button>
-              <button type="submit" className="px-3 py-1.5 text-xs font-medium text-white bg-purple-500 rounded-lg">Save</button>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] rounded-lg hover:bg-white/5 transition-all">Cancel</motion.button>
+              <motion.button whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(147,51,234,0.2)' }} whileTap={{ scale: 0.98 }} type="submit" className="px-5 py-2 text-xs font-semibold text-white bg-gradient-to-r from-purple-500 to-violet-500 rounded-lg shadow-lg shadow-purple-500/20">Save Entry</motion.button>
             </div>
           </motion.form>
         )}
@@ -715,63 +715,46 @@ function JournalTab() {
         {entries.map((entry, i) => (
           <motion.div key={entry.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
             transition={{ delay: i * 0.03 }}
-            className="p-3 rounded-lg hover:bg-white/[0.03] transition-colors group flex gap-3 items-start">
-            <span className="text-lg shrink-0 mt-0.5">{entry.mood}</span>
+            whileHover={{ x: 2, backgroundColor: 'rgba(147,51,234,0.03)' }}
+            className="p-3.5 rounded-xl hover:bg-white/[0.03] transition-all group flex gap-3 items-start border border-transparent hover:border-purple-500/10">
+            <motion.span whileHover={{ scale: 1.2, rotate: 10 }} className="text-xl shrink-0 mt-0.5 cursor-default">{entry.mood}</motion.span>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">{entry.text}</p>
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">{entry.date} · {entry.time}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-[10px] text-[var(--color-text-muted)] bg-white/[0.03] px-2 py-0.5 rounded-md">{entry.date}</span>
+                <span className="text-[10px] text-[var(--color-text-muted)]">{entry.time}</span>
+              </div>
             </div>
-            <button onClick={() => deleteEntry(entry.id)}
-              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-400 transition-all">
+            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.8 }} onClick={() => deleteEntry(entry.id)}
+              className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-400 transition-all">
               <Trash2 size={12} />
-            </button>
+            </motion.button>
           </motion.div>
         ))}
       </AnimatePresence>
       {!showForm && (
-        <button onClick={() => setShowForm(true)}
-          className="w-full py-2 flex items-center justify-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-purple-400 transition-colors">
-          <Plus size={12} /> Write entry
-        </button>
+        <motion.button whileHover={{ scale: 1.01, backgroundColor: 'rgba(147,51,234,0.05)' }} whileTap={{ scale: 0.99 }}
+          onClick={() => setShowForm(true)}
+          className="w-full py-3 flex items-center justify-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-purple-400 transition-all rounded-xl border border-dashed border-[var(--color-border)] hover:border-purple-500/20">
+          <Plus size={13} /> Write entry
+        </motion.button>
       )}
     </div>
   );
 }
 
-function HabitsTab() {
-  const [habits, setHabits] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('lifeos-habits') || '[]'); } catch { return []; }
-  });
+export function HabitsTab() {
+  const { habits, addHabit, toggleDay, deleteHabit } = useHabits();
   const [showForm, setShowForm] = useState(false);
   const [text, setText] = useState('');
   const todayKey = new Date().toISOString().split('T')[0];
 
-  const save = (data) => { localStorage.setItem('lifeos-habits', JSON.stringify(data)); };
-
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    const updated = [...habits, { id: Date.now(), label: text.trim(), completedDays: [] }];
-    setHabits(updated);
-    save(updated);
+    await addHabit(text.trim());
     setText('');
     setShowForm(false);
-  };
-
-  const toggleDay = (id) => {
-    const updated = habits.map(h => {
-      if (h.id !== id) return h;
-      const days = h.completedDays || [];
-      return { ...h, completedDays: days.includes(todayKey) ? days.filter(d => d !== todayKey) : [...days, todayKey] };
-    });
-    setHabits(updated);
-    save(updated);
-  };
-
-  const deleteHabit = (id) => {
-    const updated = habits.filter(h => h.id !== id);
-    setHabits(updated);
-    save(updated);
   };
 
   // Generate last 7 days for the streak view
@@ -779,6 +762,20 @@ function HabitsTab() {
     const d = new Date(); d.setDate(d.getDate() - (6 - i));
     return { key: d.toISOString().split('T')[0], label: d.toLocaleDateString('en-US', { weekday: 'narrow' }) };
   });
+
+  // Calculate streaks
+  const getStreak = (completedDays) => {
+    let streak = 0;
+    const d = new Date();
+    while (true) {
+      const key = d.toISOString().split('T')[0];
+      if ((completedDays || []).includes(key)) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else break;
+    }
+    return streak;
+  };
 
   if (habits.length === 0 && !showForm) {
     return (
@@ -797,93 +794,115 @@ function HabitsTab() {
       {/* Day headers */}
       <div className="flex items-center gap-2 mb-3 pl-[180px]">
         {last7.map(d => (
-          <div key={d.key} className={`w-8 text-center text-[10px] font-medium ${d.key === todayKey ? 'text-purple-400' : 'text-[var(--color-text-muted)]'}`}>
+          <div key={d.key} className={`w-9 text-center text-[10px] font-semibold ${d.key === todayKey ? 'text-purple-400' : 'text-[var(--color-text-muted)]'}`}>
             {d.label}
+            {d.key === todayKey && (
+              <motion.div
+                layoutId="todayDot"
+                className="w-1 h-1 rounded-full bg-purple-400 mx-auto mt-0.5"
+              />
+            )}
           </div>
         ))}
+        <div className="w-14 text-center text-[10px] font-semibold text-amber-400 ml-1">
+          <Flame size={10} className="inline" /> Streak
+        </div>
       </div>
 
       <AnimatePresence mode="popLayout">
-        {habits.map((habit, i) => (
-          <motion.div key={habit.id} layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            transition={{ delay: i * 0.03 }}
-            className="flex items-center gap-2 py-2 group">
-            <span className="text-sm text-[var(--color-text-primary)] w-[170px] truncate">{habit.label}</span>
-            <div className="flex gap-2">
-              {last7.map(d => {
-                const done = (habit.completedDays || []).includes(d.key);
-                const isToday = d.key === todayKey;
-                return (
-                  <motion.button key={d.key} whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }}
-                    onClick={isToday ? () => toggleDay(habit.id) : undefined}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all ${done ? 'bg-purple-500/20 text-purple-400' : isToday ? 'bg-white/5 text-[var(--color-text-muted)] hover:bg-purple-500/10 cursor-pointer' : 'bg-white/[0.02] text-[var(--color-text-muted)]/50'
-                      } ${!isToday && !done ? 'cursor-default opacity-40' : ''}`}>
-                    {done ? <Check size={14} /> : isToday ? '·' : ''}
-                  </motion.button>
-                );
-              })}
-            </div>
-            <button onClick={() => deleteHabit(habit.id)}
-              className="ml-auto p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-400 transition-all">
-              <Trash2 size={12} />
-            </button>
-          </motion.div>
-        ))}
+        {habits.map((habit, i) => {
+          const streak = getStreak(habit.completedDays);
+          return (
+            <motion.div key={habit.id} layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              transition={{ delay: i * 0.03 }}
+              whileHover={{ backgroundColor: 'rgba(147,51,234,0.02)' }}
+              className="flex items-center gap-2 py-2.5 px-1 group rounded-lg transition-all">
+              <span className="text-sm font-medium text-[var(--color-text-primary)] w-[170px] truncate">{habit.label}</span>
+              <div className="flex gap-2">
+                {last7.map(d => {
+                  const done = (habit.completedDays || []).includes(d.key);
+                  const isToday = d.key === todayKey;
+                  return (
+                    <motion.button key={d.key}
+                      whileHover={{ scale: 1.25, y: -2 }}
+                      whileTap={{ scale: 0.75 }}
+                      onClick={isToday ? () => toggleDay(habit.id, todayKey) : undefined}
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs transition-all ${done
+                        ? 'bg-gradient-to-br from-purple-500/25 to-violet-500/15 text-purple-400 shadow-sm shadow-purple-500/10 ring-1 ring-purple-500/20'
+                        : isToday
+                          ? 'bg-white/5 text-[var(--color-text-muted)] hover:bg-purple-500/10 cursor-pointer ring-1 ring-purple-500/10'
+                          : 'bg-white/[0.02] text-[var(--color-text-muted)]/50'
+                      } ${!isToday && !done ? 'cursor-default opacity-30' : ''}`}>
+                      {done ? (
+                        <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 400 }}>
+                          <Check size={14} />
+                        </motion.div>
+                      ) : isToday ? <span className="text-purple-400/40">+</span> : ''}
+                    </motion.button>
+                  );
+                })}
+              </div>
+              <div className="w-14 text-center ml-1">
+                {streak > 0 ? (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className={`inline-flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-lg ${streak >= 7 ? 'text-amber-400 bg-amber-500/15' : streak >= 3 ? 'text-purple-400 bg-purple-500/15' : 'text-[var(--color-text-muted)] bg-white/5'}`}
+                  >
+                    <Flame size={10} />{streak}d
+                  </motion.span>
+                ) : (
+                  <span className="text-[10px] text-[var(--color-text-muted)]/40">—</span>
+                )}
+              </div>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.8 }} onClick={() => deleteHabit(habit.id)}
+                className="ml-auto p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-400 transition-all">
+                <Trash2 size={12} />
+              </motion.button>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
 
       <AnimatePresence>
         {showForm ? (
           <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            onSubmit={handleAdd} className="flex items-center gap-2 pt-2">
+            onSubmit={handleAdd} className="flex items-center gap-2 pt-2 px-1">
             <input value={text} onChange={e => setText(e.target.value)} placeholder="Habit name..." autoFocus
-              className="flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none border-b border-[var(--color-border)] py-1 focus:border-purple-500/50 transition-colors" />
-            <button type="submit" className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"><Check size={14} /></button>
+              className="flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/40 outline-none border-b border-[var(--color-border)] py-1.5 focus:border-purple-500/50 transition-colors" />
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className="p-2 rounded-xl bg-gradient-to-r from-purple-500/20 to-violet-500/20 text-purple-400 hover:from-purple-500/30 hover:to-violet-500/30 transition-all"><Check size={14} /></motion.button>
           </motion.form>
         ) : (
-          <button onClick={() => setShowForm(true)}
-            className="w-full py-2 flex items-center justify-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-purple-400 transition-colors">
-            <Plus size={12} /> Add habit
-          </button>
+          <motion.button whileHover={{ scale: 1.01, backgroundColor: 'rgba(147,51,234,0.05)' }} whileTap={{ scale: 0.99 }}
+            onClick={() => setShowForm(true)}
+            className="w-full py-3 flex items-center justify-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-purple-400 transition-all rounded-xl border border-dashed border-[var(--color-border)] hover:border-purple-500/20">
+            <Plus size={13} /> Add habit
+          </motion.button>
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-function WorkoutTab() {
-  const [logs, setLogs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('lifeos-workouts') || '[]'); } catch { return []; }
-  });
+export function WorkoutTab() {
+  const { workouts, addWorkout, updateWorkout, deleteWorkout } = useWorkouts();
   const [showForm, setShowForm] = useState(false);
   const [exercise, setExercise] = useState('');
   const [sets, setSets] = useState('3');
   const [reps, setReps] = useState('10');
 
-  const save = (data) => { localStorage.setItem('lifeos-workouts', JSON.stringify(data)); };
-
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!exercise.trim()) return;
-    const updated = [...logs, { id: Date.now(), exercise: exercise.trim(), sets: Number(sets), reps: Number(reps), date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), done: false }];
-    setLogs(updated);
-    save(updated);
+    await addWorkout({ exercise: exercise.trim(), sets: Number(sets), reps: Number(reps) });
     setExercise(''); setSets('3'); setReps('10');
     setShowForm(false);
   };
 
-  const toggleDone = (id) => {
-    const updated = logs.map(l => l.id === id ? { ...l, done: !l.done } : l);
-    setLogs(updated);
-    save(updated);
-  };
+  const totalDone = workouts.filter(w => w.done).length;
+  const totalSets = workouts.reduce((s, w) => s + (w.sets || 0), 0);
 
-  const deleteLog = (id) => {
-    const updated = logs.filter(l => l.id !== id);
-    setLogs(updated);
-    save(updated);
-  };
-
-  if (logs.length === 0 && !showForm) {
+  if (workouts.length === 0 && !showForm) {
     return (
       <EmptyState
         icon={Dumbbell}
@@ -897,7 +916,29 @@ function WorkoutTab() {
 
   return (
     <div className="p-4 space-y-2">
-      <div className="grid grid-cols-12 gap-2 px-2 pb-2 text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider border-b border-[var(--color-border)]">
+      {/* Stats bar */}
+      <div className="flex items-center gap-4 mb-3 px-2">
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 rounded-lg bg-purple-500/10 flex items-center justify-center">
+            <Dumbbell size={11} className="text-purple-400" />
+          </div>
+          <span className="text-[10px] text-[var(--color-text-muted)]">{workouts.length} exercises</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <Check size={11} className="text-emerald-400" />
+          </div>
+          <span className="text-[10px] text-[var(--color-text-muted)]">{totalDone} completed</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <Zap size={11} className="text-amber-400" />
+          </div>
+          <span className="text-[10px] text-[var(--color-text-muted)]">{totalSets} total sets</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-12 gap-2 px-2 pb-2 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-widest border-b border-[var(--color-border)]">
         <div className="col-span-1"></div>
         <div className="col-span-5">Exercise</div>
         <div className="col-span-2 text-center">Sets</div>
@@ -905,27 +946,37 @@ function WorkoutTab() {
         <div className="col-span-2 text-right">Date</div>
       </div>
       <AnimatePresence mode="popLayout">
-        {logs.map((log, i) => (
+        {workouts.map((log, i) => (
           <motion.div key={log.id} layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
             transition={{ delay: i * 0.03 }}
-            className="grid grid-cols-12 gap-2 px-2 py-2.5 items-center group hover:bg-white/[0.02] rounded-lg transition-colors">
+            whileHover={{ backgroundColor: 'rgba(147,51,234,0.02)' }}
+            className="grid grid-cols-12 gap-2 px-2 py-2.5 items-center group rounded-lg transition-all">
             <div className="col-span-1">
-              <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={() => toggleDone(log.id)}
-                className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${log.done ? 'border-emerald-400 bg-emerald-400' : 'border-[var(--color-text-muted)] hover:border-emerald-400'}`}>
-                {log.done && <Check size={10} className="text-white" />}
+              <motion.button whileHover={{ scale: 1.3, rotate: 5 }} whileTap={{ scale: 0.7 }}
+                onClick={() => updateWorkout(log.id, { done: !log.done })}
+                className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${log.done ? 'border-emerald-400 bg-emerald-400 shadow-sm shadow-emerald-500/20' : 'border-[var(--color-text-muted)]/40 hover:border-emerald-400'}`}>
+                {log.done && (
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400 }}>
+                    <Check size={11} className="text-white" />
+                  </motion.div>
+                )}
               </motion.button>
             </div>
             <div className="col-span-5">
-              <span className={`text-sm ${log.done ? 'line-through text-[var(--color-text-muted)]' : 'text-[var(--color-text-primary)]'}`}>{log.exercise}</span>
+              <span className={`text-sm font-medium ${log.done ? 'line-through text-[var(--color-text-muted)]' : 'text-[var(--color-text-primary)]'}`}>{log.exercise}</span>
             </div>
-            <div className="col-span-2 text-center"><span className="text-sm text-purple-400 font-medium">{log.sets}</span></div>
-            <div className="col-span-2 text-center"><span className="text-sm text-[var(--color-text-secondary)]">{log.reps}</span></div>
+            <div className="col-span-2 text-center">
+              <span className="text-sm text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded-lg">{log.sets}</span>
+            </div>
+            <div className="col-span-2 text-center">
+              <span className="text-sm text-[var(--color-text-secondary)] font-medium">{log.reps}</span>
+            </div>
             <div className="col-span-2 flex items-center justify-end gap-1">
-              <span className="text-xs text-[var(--color-text-muted)]">{log.date}</span>
-              <button onClick={() => deleteLog(log.id)}
-                className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-400 transition-all">
+              <span className="text-[10px] text-[var(--color-text-muted)] bg-white/[0.03] px-1.5 py-0.5 rounded-md">{log.date}</span>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.8 }} onClick={() => deleteWorkout(log.id)}
+                className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-400 transition-all">
                 <Trash2 size={11} />
-              </button>
+              </motion.button>
             </div>
           </motion.div>
         ))}
@@ -933,68 +984,63 @@ function WorkoutTab() {
       <AnimatePresence>
         {showForm ? (
           <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            onSubmit={handleAdd} className="grid grid-cols-12 gap-2 px-2 py-2 items-center bg-white/[0.02] rounded-lg">
+            onSubmit={handleAdd} className="grid grid-cols-12 gap-2 px-2 py-3 items-center bg-gradient-to-r from-purple-500/[0.04] to-transparent rounded-xl border border-purple-500/10">
             <div className="col-span-1" />
             <div className="col-span-5">
-              <input value={exercise} onChange={e => setExercise(e.target.value)} placeholder="Exercise..." autoFocus
-                className="w-full bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none" />
+              <input value={exercise} onChange={e => setExercise(e.target.value)} placeholder="Exercise name..." autoFocus
+                className="w-full bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/40 outline-none" />
             </div>
             <div className="col-span-2">
               <input value={sets} onChange={e => setSets(e.target.value)} type="number" min="1" max="99"
-                className="w-full bg-transparent text-sm text-center text-[var(--color-text-primary)] outline-none" />
+                className="w-full bg-white/[0.03] text-sm text-center text-[var(--color-text-primary)] outline-none rounded-lg py-1 border border-[var(--color-border)] focus:border-purple-500/30" />
             </div>
             <div className="col-span-2">
               <input value={reps} onChange={e => setReps(e.target.value)} type="number" min="1" max="999"
-                className="w-full bg-transparent text-sm text-center text-[var(--color-text-primary)] outline-none" />
+                className="w-full bg-white/[0.03] text-sm text-center text-[var(--color-text-primary)] outline-none rounded-lg py-1 border border-[var(--color-border)] focus:border-purple-500/30" />
             </div>
             <div className="col-span-2 flex justify-end">
-              <button type="submit" className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"><Check size={14} /></button>
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className="p-2 rounded-xl bg-gradient-to-r from-purple-500/20 to-violet-500/20 text-purple-400"><Check size={14} /></motion.button>
             </div>
           </motion.form>
         ) : (
-          <button onClick={() => setShowForm(true)}
-            className="w-full py-2 flex items-center justify-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-purple-400 transition-colors">
-            <Plus size={12} /> Log exercise
-          </button>
+          <motion.button whileHover={{ scale: 1.01, backgroundColor: 'rgba(147,51,234,0.05)' }} whileTap={{ scale: 0.99 }}
+            onClick={() => setShowForm(true)}
+            className="w-full py-3 flex items-center justify-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-purple-400 transition-all rounded-xl border border-dashed border-[var(--color-border)] hover:border-purple-500/20">
+            <Plus size={13} /> Log exercise
+          </motion.button>
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-function MealTab() {
-  const [meals, setMeals] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('lifeos-meals') || '[]'); } catch { return []; }
-  });
+export function MealTab() {
+  const { meals, addMeal, updateMeal, deleteMeal } = useMeals();
   const [showForm, setShowForm] = useState(false);
   const [mealName, setMealName] = useState('');
   const [mealType, setMealType] = useState('🍳 Breakfast');
+  const [calories, setCalories] = useState('');
 
-  const save = (data) => { localStorage.setItem('lifeos-meals', JSON.stringify(data)); };
+  const mealTypes = ['🍳 Breakfast', '🥗 Lunch', '🍽️ Dinner', '🍎 Snack'];
+  const typeColors = { '🍳 Breakfast': 'amber', '🥗 Lunch': 'emerald', '🍽️ Dinner': 'purple', '🍎 Snack': 'sky' };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!mealName.trim()) return;
-    const updated = [...meals, { id: Date.now(), name: mealName.trim(), type: mealType, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), eaten: false }];
-    setMeals(updated);
-    save(updated);
+    await addMeal({
+      name: mealName.trim(),
+      type: mealType,
+      calories: calories ? Number(calories) : null,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      eaten: false,
+    });
     setMealName('');
+    setCalories('');
     setShowForm(false);
   };
 
-  const toggleEaten = (id) => {
-    const updated = meals.map(m => m.id === id ? { ...m, eaten: !m.eaten } : m);
-    setMeals(updated);
-    save(updated);
-  };
-
-  const deleteMeal = (id) => {
-    const updated = meals.filter(m => m.id !== id);
-    setMeals(updated);
-    save(updated);
-  };
-
-  const mealTypes = ['🍳 Breakfast', '🥗 Lunch', '🍽️ Dinner', '🍎 Snack'];
+  const totalCals = meals.reduce((s, m) => s + (m.eaten && m.calories ? m.calories : 0), 0);
+  const eatenCount = meals.filter(m => m.eaten).length;
 
   if (meals.length === 0 && !showForm) {
     return (
@@ -1010,42 +1056,84 @@ function MealTab() {
 
   return (
     <div className="p-4 space-y-2">
+      {/* Stats bar */}
+      <div className="flex items-center gap-4 mb-3 px-2">
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 rounded-lg bg-purple-500/10 flex items-center justify-center">
+            <UtensilsCrossed size={11} className="text-purple-400" />
+          </div>
+          <span className="text-[10px] text-[var(--color-text-muted)]">{meals.length} planned</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <Check size={11} className="text-emerald-400" />
+          </div>
+          <span className="text-[10px] text-[var(--color-text-muted)]">{eatenCount} eaten</span>
+        </div>
+        {totalCals > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Flame size={11} className="text-amber-400" />
+            </div>
+            <span className="text-[10px] text-[var(--color-text-muted)]">{totalCals} cal</span>
+          </div>
+        )}
+      </div>
+
       <AnimatePresence mode="popLayout">
-        {meals.map((meal, i) => (
-          <motion.div key={meal.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
-            transition={{ delay: i * 0.03 }}
-            className="flex items-center gap-3 py-2.5 px-2 group hover:bg-white/[0.02] rounded-lg transition-colors">
-            <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={() => toggleEaten(meal.id)}
-              className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${meal.eaten ? 'border-emerald-400 bg-emerald-400' : 'border-[var(--color-text-muted)] hover:border-emerald-400'}`}>
-              {meal.eaten && <Check size={10} className="text-white" />}
-            </motion.button>
-            <span className="text-xs px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 font-medium shrink-0">{meal.type}</span>
-            <span className={`text-sm flex-1 ${meal.eaten ? 'line-through text-[var(--color-text-muted)]' : 'text-[var(--color-text-primary)]'}`}>{meal.name}</span>
-            <span className="text-xs text-[var(--color-text-muted)]">{meal.date}</span>
-            <button onClick={() => deleteMeal(meal.id)}
-              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-400 transition-all">
-              <Trash2 size={11} />
-            </button>
-          </motion.div>
-        ))}
+        {meals.map((meal, i) => {
+          const color = typeColors[meal.type] || 'purple';
+          return (
+            <motion.div key={meal.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
+              transition={{ delay: i * 0.03 }}
+              whileHover={{ backgroundColor: 'rgba(147,51,234,0.02)' }}
+              className="flex items-center gap-3 py-2.5 px-2 group rounded-lg transition-all">
+              <motion.button whileHover={{ scale: 1.3, rotate: 5 }} whileTap={{ scale: 0.7 }}
+                onClick={() => updateMeal(meal.id, { eaten: !meal.eaten })}
+                className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${meal.eaten ? 'border-emerald-400 bg-emerald-400 shadow-sm shadow-emerald-500/20' : 'border-[var(--color-text-muted)]/40 hover:border-emerald-400'}`}>
+                {meal.eaten && (
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400 }}>
+                    <Check size={11} className="text-white" />
+                  </motion.div>
+                )}
+              </motion.button>
+              <span className={`text-xs px-2 py-0.5 rounded-md bg-${color}-500/15 text-${color}-400 font-medium shrink-0`}>{meal.type}</span>
+              <span className={`text-sm font-medium flex-1 ${meal.eaten ? 'line-through text-[var(--color-text-muted)]' : 'text-[var(--color-text-primary)]'}`}>{meal.name}</span>
+              {meal.calories && (
+                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md font-medium">{meal.calories} cal</span>
+              )}
+              <span className="text-[10px] text-[var(--color-text-muted)] bg-white/[0.03] px-1.5 py-0.5 rounded-md">{meal.date}</span>
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.8 }} onClick={() => deleteMeal(meal.id)}
+                className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-400 transition-all">
+                <Trash2 size={11} />
+              </motion.button>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
       <AnimatePresence>
         {showForm ? (
           <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            onSubmit={handleAdd} className="flex items-center gap-2 pt-2 px-2">
+            onSubmit={handleAdd} className="flex items-center gap-2 pt-3 px-2 pb-1 bg-gradient-to-r from-purple-500/[0.04] to-transparent rounded-xl border border-purple-500/10">
             <select value={mealType} onChange={e => setMealType(e.target.value)}
-              className="bg-[var(--color-surface-dark)] border border-[var(--color-border)] rounded-lg px-2 py-1.5 text-xs text-[var(--color-text-primary)] outline-none">
+              className="bg-[var(--color-surface-dark)] border border-[var(--color-border)] rounded-lg px-2 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-purple-500/30 transition-colors">
               {mealTypes.map(t => <option key={t}>{t}</option>)}
             </select>
             <input value={mealName} onChange={e => setMealName(e.target.value)} placeholder="What are you eating?" autoFocus
-              className="flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none border-b border-[var(--color-border)] py-1 focus:border-purple-500/50 transition-colors" />
-            <button type="submit" className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"><Check size={14} /></button>
+              className="flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/40 outline-none border-b border-[var(--color-border)] py-1 focus:border-purple-500/50 transition-colors" />
+            <input value={calories} onChange={e => setCalories(e.target.value)} type="number" min="0" placeholder="cal"
+              className="w-16 bg-white/[0.03] text-sm text-center text-[var(--color-text-primary)] outline-none rounded-lg py-1 border border-[var(--color-border)] focus:border-purple-500/30 placeholder:text-[var(--color-text-muted)]/40" />
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit"
+              className="p-2 rounded-xl bg-gradient-to-r from-purple-500/20 to-violet-500/20 text-purple-400">
+              <Check size={14} />
+            </motion.button>
           </motion.form>
         ) : (
-          <button onClick={() => setShowForm(true)}
-            className="w-full py-2 flex items-center justify-center gap-2 text-xs text-[var(--color-text-muted)] hover:text-purple-400 transition-colors">
-            <Plus size={12} /> Plan meal
-          </button>
+          <motion.button whileHover={{ scale: 1.01, backgroundColor: 'rgba(147,51,234,0.05)' }} whileTap={{ scale: 0.99 }}
+            onClick={() => setShowForm(true)}
+            className="w-full py-3 flex items-center justify-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-purple-400 transition-all rounded-xl border border-dashed border-[var(--color-border)] hover:border-purple-500/20">
+            <Plus size={13} /> Plan meal
+          </motion.button>
         )}
       </AnimatePresence>
     </div>
@@ -1518,9 +1606,11 @@ function PomodoroMini() {
 
 /* ── Finance Summary Widget ── */
 function FinanceWidget({ className = '' }) {
-  const { monthlyIncome, monthlyExpenses, balance, expensesByCategory, budget } = useFinance();
-  const pct = budget > 0 ? Math.min(Math.round((monthlyExpenses / budget) * 100), 100) : 0;
-  const isOver = monthlyExpenses > budget && budget > 0;
+  const { monthlyIncome, monthlyExpenses, balance, expensesByCategory, budgets } = useFinance();
+  const overallBudget = budgets.find(b => !b.category);
+  const budgetAmount = overallBudget?.amount || 0;
+  const pct = budgetAmount > 0 ? Math.min(Math.round((monthlyExpenses / budgetAmount) * 100), 100) : 0;
+  const isOver = monthlyExpenses > budgetAmount && budgetAmount > 0;
   const hasData = monthlyIncome > 0 || monthlyExpenses > 0;
 
   return (
@@ -1588,7 +1678,7 @@ function FinanceWidget({ className = '' }) {
       )}
 
       {/* Budget bar (compact, below) */}
-      {budget > 0 && hasData && (
+      {budgetAmount > 0 && hasData && (
         <div className="mt-3 pt-2.5 border-t border-[var(--color-border)]">
           <div className="flex items-center gap-3">
             <Target size={11} className="text-purple-400 flex-shrink-0" />
@@ -1603,7 +1693,7 @@ function FinanceWidget({ className = '' }) {
               </div>
             </div>
             <span className={`text-[10px] font-semibold tabular-nums ${isOver ? 'text-red-400' : 'text-[var(--color-text-secondary)]'}`}>
-              {formatRupees(monthlyExpenses)} / {formatRupees(budget)}
+              {formatRupees(monthlyExpenses)} / {formatRupees(budgetAmount)}
             </span>
           </div>
         </div>
@@ -1611,6 +1701,749 @@ function FinanceWidget({ className = '' }) {
     </motion.div>
   );
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   AI / ML FEATURE COMPONENTS
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Weather Condition → Icon + Gradient Map ── */
+const WEATHER_MAP = {
+  'clear sky':            { Icon: Sun,             gradient: 'from-amber-500/20 via-orange-500/10 to-yellow-500/5',  accent: '#f59e0b' },
+  'few clouds':           { Icon: Cloud,           gradient: 'from-sky-500/20 via-blue-500/10 to-indigo-500/5',       accent: '#38bdf8' },
+  'scattered clouds':     { Icon: Cloud,           gradient: 'from-slate-500/15 via-blue-500/10 to-indigo-500/5',     accent: '#94a3b8' },
+  'broken clouds':        { Icon: Cloud,           gradient: 'from-gray-500/20 via-slate-500/10 to-zinc-500/5',       accent: '#9ca3af' },
+  'overcast clouds':      { Icon: Cloud,           gradient: 'from-gray-500/20 via-slate-500/10 to-zinc-500/5',       accent: '#9ca3af' },
+  'shower rain':          { Icon: CloudDrizzle,    gradient: 'from-blue-500/20 via-indigo-500/10 to-violet-500/5',     accent: '#60a5fa' },
+  'light rain':           { Icon: CloudDrizzle,    gradient: 'from-blue-500/20 via-cyan-500/10 to-sky-500/5',          accent: '#67e8f9' },
+  'moderate rain':        { Icon: CloudRain,       gradient: 'from-blue-600/20 via-indigo-500/10 to-violet-500/5',     accent: '#818cf8' },
+  'heavy intensity rain': { Icon: CloudRain,       gradient: 'from-indigo-600/25 via-blue-500/15 to-violet-500/5',     accent: '#818cf8' },
+  rain:                   { Icon: CloudRain,       gradient: 'from-blue-600/20 via-indigo-500/10 to-violet-500/5',     accent: '#818cf8' },
+  thunderstorm:           { Icon: CloudLightning,  gradient: 'from-violet-600/25 via-purple-500/15 to-fuchsia-500/5',  accent: '#a78bfa' },
+  snow:                   { Icon: CloudSnow,       gradient: 'from-sky-400/20 via-blue-300/10 to-cyan-200/5',          accent: '#bae6fd' },
+  mist:                   { Icon: Eye,             gradient: 'from-gray-400/20 via-slate-400/10 to-zinc-300/5',        accent: '#d1d5db' },
+  haze:                   { Icon: Eye,             gradient: 'from-amber-400/15 via-yellow-400/10 to-orange-300/5',    accent: '#fcd34d' },
+  fog:                    { Icon: Eye,             gradient: 'from-gray-400/20 via-slate-400/10 to-zinc-300/5',        accent: '#d1d5db' },
+};
+
+function getWeatherVisuals(description) {
+  const key = (description || '').toLowerCase();
+  return WEATHER_MAP[key] || WEATHER_MAP['clear sky'];
+}
+
+/* ── Weather Widget ── */
+function WeatherWidget() {
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showForecast, setShowForecast] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.get('/weather');
+        if (!cancelled) setWeather(data);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.5 }}
+        className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] p-5 overflow-hidden"
+      >
+        <div className="animate-pulse space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-white/5" />
+            <div className="space-y-2 flex-1">
+              <div className="h-4 w-24 rounded bg-white/5" />
+              <div className="h-3 w-32 rounded bg-white/5" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-2">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="flex-1 h-16 rounded-lg bg-white/5" />
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (error || !weather) {
+    const isNoCity = error?.includes('No city') || error?.includes('city');
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.5 }}
+        className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] p-5"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center">
+            <Cloud size={18} className="text-sky-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">Weather</p>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {isNoCity
+                ? 'Set your city in Settings → Weather to see weather here'
+                : 'Unable to load weather data'}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  const { current, forecast } = weather;
+  const visuals = getWeatherVisuals(current.description);
+  const WeatherIcon = visuals.Icon;
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="relative rounded-2xl border border-[var(--color-border)] overflow-hidden"
+      style={{ background: 'var(--color-surface-card)' }}
+    >
+      {/* Animated gradient overlay */}
+      <motion.div
+        className={`absolute inset-0 bg-gradient-to-br ${visuals.gradient} pointer-events-none`}
+        animate={{ opacity: [0.6, 0.9, 0.6] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      {/* Glassmorphism layer */}
+      <div className="absolute inset-0 backdrop-blur-3xl pointer-events-none" />
+
+      <div className="relative p-5">
+        {/* Main row */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <motion.div
+              animate={{ y: [0, -4, 0], rotate: [0, 3, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-14 h-14 rounded-2xl flex items-center justify-center"
+              style={{ background: `${visuals.accent}20`, boxShadow: `0 8px 24px ${visuals.accent}15` }}
+            >
+              <WeatherIcon size={26} style={{ color: visuals.accent }} />
+            </motion.div>
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-extrabold text-[var(--color-text-primary)] tracking-tight tabular-nums">
+                  {current.temp}°
+                </span>
+                <span className="text-sm text-[var(--color-text-muted)] font-medium">C</span>
+              </div>
+              <p className="text-sm text-[var(--color-text-secondary)] capitalize mt-0.5">{current.description}</p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                {current.city}, {current.country}
+              </p>
+            </div>
+          </div>
+
+          {/* Right side metrics */}
+          <div className="flex flex-col gap-2 items-end">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+              <Thermometer size={12} style={{ color: visuals.accent }} />
+              <span>Feels {current.feelsLike}°</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+              <Wind size={12} style={{ color: visuals.accent }} />
+              <span>{current.wind} km/h</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+              <Droplets size={12} style={{ color: visuals.accent }} />
+              <span>{current.humidity}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 5-Day Forecast Toggle */}
+        {forecast && forecast.length > 0 && (
+          <>
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => setShowForecast(!showForecast)}
+              className="w-full flex items-center justify-center gap-1.5 mt-4 pt-3 border-t border-white/[0.06] text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+            >
+              {showForecast ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              {showForecast ? 'Hide' : 'Show'} 5-Day Forecast
+            </motion.button>
+
+            <AnimatePresence>
+              {showForecast && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="grid grid-cols-5 gap-2 mt-3">
+                    {forecast.map((day, i) => {
+                      const fv = getWeatherVisuals(day.description);
+                      const FIcon = fv.Icon;
+                      const d = new Date(day.date + 'T00:00:00');
+                      return (
+                        <motion.div
+                          key={day.date}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.04]"
+                        >
+                          <span className="text-[10px] font-semibold text-[var(--color-text-muted)] uppercase">
+                            {dayNames[d.getDay()]}
+                          </span>
+                          <FIcon size={18} style={{ color: fv.accent }} />
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-bold text-[var(--color-text-primary)]">{day.high}°</span>
+                            <span className="text-[10px] text-[var(--color-text-muted)]">{day.low}°</span>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+
+/* ── AI Daily Briefing Card ── */
+function AIBriefingCard() {
+  const [briefing, setBriefing] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [displayedText, setDisplayedText] = useState('');
+  const [typewriterDone, setTypewriterDone] = useState(false);
+
+  const fetchBriefing = useCallback(async (regenerate = false) => {
+    try {
+      if (regenerate) setRegenerating(true); else setLoading(true);
+      setTypewriterDone(false);
+      setDisplayedText('');
+
+      let data;
+      if (regenerate) {
+        data = await api.post('/ai/briefing/regenerate', { date: new Date().toISOString().split('T')[0] });
+      } else {
+        data = await api.get('/ai/briefing');
+      }
+      setBriefing(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setRegenerating(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchBriefing(); }, [fetchBriefing]);
+
+  // Typewriter effect
+  useEffect(() => {
+    if (!briefing?.briefing || collapsed) return;
+    const text = briefing.briefing;
+    let i = 0;
+    setDisplayedText('');
+    setTypewriterDone(false);
+    const speed = Math.max(8, Math.min(18, 2000 / text.length));
+    const interval = setInterval(() => {
+      i++;
+      setDisplayedText(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(interval);
+        setTypewriterDone(true);
+      }
+    }, speed);
+    return () => clearInterval(interval);
+  }, [briefing, collapsed]);
+
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] p-5"
+      >
+        <div className="animate-pulse flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10" />
+          <div className="space-y-2 flex-1">
+            <div className="h-4 w-32 rounded bg-white/5" />
+            <div className="h-3 w-48 rounded bg-white/5" />
+          </div>
+        </div>
+        <div className="animate-pulse space-y-2">
+          <div className="h-3 w-full rounded bg-white/5" />
+          <div className="h-3 w-5/6 rounded bg-white/5" />
+          <div className="h-3 w-4/6 rounded bg-white/5" />
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (error) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] p-5"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+            <Brain size={18} className="text-purple-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">AI Briefing</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Unable to generate briefing right now.</p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] overflow-hidden"
+    >
+      {/* Subtle glow */}
+      <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-purple-500/[0.06] blur-3xl pointer-events-none" />
+
+      <div className="relative p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <motion.div
+              animate={{ boxShadow: ['0 0 0 rgba(147,51,234,0)', '0 0 20px rgba(147,51,234,0.2)', '0 0 0 rgba(147,51,234,0)'] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-violet-500/10 flex items-center justify-center"
+            >
+              <Sparkles size={18} className="text-purple-400" />
+            </motion.div>
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">AI Daily Briefing</h3>
+              <p className="text-[10px] text-[var(--color-text-muted)]">
+                {briefing?.cached ? 'Cached' : 'Fresh'} · {briefing?.date || 'Today'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => fetchBriefing(true)}
+              disabled={regenerating}
+              className="p-1.5 rounded-lg hover:bg-purple-500/10 text-[var(--color-text-muted)] hover:text-purple-400 transition-all disabled:opacity-40"
+              title="Regenerate briefing"
+            >
+              <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-1.5 rounded-lg hover:bg-white/5 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-all"
+            >
+              {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <AnimatePresence>
+          {!collapsed && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {briefing?.signals?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {briefing.signals.map((signal) => {
+                    const toneClasses = {
+                      emerald: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
+                      amber: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
+                      red: 'bg-red-500/10 text-red-300 border-red-500/20',
+                      purple: 'bg-purple-500/10 text-purple-300 border-purple-500/20',
+                      slate: 'bg-white/[0.04] text-[var(--color-text-muted)] border-[var(--color-border)]',
+                    };
+                    return (
+                      <div
+                        key={signal.label}
+                        className={`px-2.5 py-1 rounded-lg border text-[10px] font-semibold ${toneClasses[signal.tone] || toneClasses.slate}`}
+                      >
+                        {signal.label}: {signal.value}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap">
+                {displayedText}
+                {!typewriterDone && (
+                  <motion.span
+                    animate={{ opacity: [1, 0] }}
+                    transition={{ duration: 0.5, repeat: Infinity }}
+                    className="inline-block w-0.5 h-4 bg-purple-400 ml-0.5 align-text-bottom"
+                  />
+                )}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+
+/* ── Smart Suggestions Banner ── */
+const SUGGESTION_ICONS = {
+  workout:  { Icon: Dumbbell, color: '#f97316', bg: 'bg-orange-500/10' },
+  journal:  { Icon: PenLine, color: '#8b5cf6', bg: 'bg-violet-500/10' },
+  finance:  { Icon: Wallet, color: '#22c55e', bg: 'bg-emerald-500/10' },
+  habit:    { Icon: Flame, color: '#f59e0b', bg: 'bg-amber-500/10' },
+  wellness: { Icon: Activity, color: '#ec4899', bg: 'bg-pink-500/10' },
+  planner:  { Icon: CalendarDays, color: '#6366f1', bg: 'bg-indigo-500/10' },
+  meal:     { Icon: UtensilsCrossed, color: '#14b8a6', bg: 'bg-teal-500/10' },
+  task:     { Icon: ListTodo, color: '#9333ea', bg: 'bg-purple-500/10' },
+};
+
+function SuggestionsBanner() {
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.get('/suggestions');
+        if (!cancelled) setSuggestions(data);
+      } catch { /* silent — suggestions are non-critical */ }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const dismiss = async (key) => {
+    setSuggestions(prev => prev.filter(s => s.key !== key));
+    try { await api.post(`/suggestions/${key}/dismiss`); } catch { /* silent */ }
+  };
+
+  if (loading || suggestions.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.25, duration: 0.5 }}
+      className="mb-6"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <motion.div
+          className="w-5 h-0.5 bg-amber-500 rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: 20 }}
+          transition={{ delay: 0.35, duration: 0.4 }}
+        />
+        <Lightbulb size={14} className="text-amber-400" />
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Smart Suggestions</h3>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <AnimatePresence mode="popLayout">
+          {suggestions.slice(0, 3).map((s, i) => {
+            const meta = SUGGESTION_ICONS[s.module] || SUGGESTION_ICONS.task;
+            const SIcon = meta.Icon;
+            return (
+              <motion.div
+                key={s.key}
+                layout
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 24, height: 0 }}
+                transition={{ delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-card)] group hover:border-amber-500/20 transition-all"
+              >
+                <div className={`w-8 h-8 rounded-lg ${meta.bg} flex items-center justify-center shrink-0`}>
+                  <SIcon size={15} style={{ color: meta.color }} />
+                </div>
+                <p className="text-sm text-[var(--color-text-secondary)] flex-1 leading-snug">{s.message}</p>
+                <motion.button
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.85 }}
+                  onClick={() => dismiss(s.key)}
+                  className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-white/5 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-all shrink-0"
+                  title="Dismiss"
+                >
+                  <X size={13} />
+                </motion.button>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+
+/* ── AI Chat Assistant (Floating Panel) ── */
+const QUICK_CHIPS = [
+  'How much did I spend this month?',
+  'Show my habit streaks',
+  'What tasks are overdue?',
+  'Summarize my week',
+  'How is my productivity trending?',
+  'Suggest a workout for today',
+  'What should I focus on today?',
+  'Any budget warnings?',
+];
+
+function AIChatAssistant() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [thinking, setThinking] = useState(false);
+  const scrollRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (open && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, open]);
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [open]);
+
+  const sendQuery = async (query) => {
+    if (!query.trim() || thinking) return;
+    const userMsg = { role: 'user', text: query.trim() };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setThinking(true);
+
+    try {
+      // Use the conversational chat endpoint with message history context
+      const recentContext = messages.slice(-6).map(m => ({ role: m.role, content: m.text }));
+      const data = await api.post('/ai/chat', { message: query.trim(), context: recentContext });
+      setMessages(prev => [...prev, { role: 'assistant', text: data.reply }]);
+    } catch (err) {
+      // Fallback to query endpoint if chat isn't available
+      try {
+        const data = await api.post('/ai/query', { query: query.trim() });
+        setMessages(prev => [...prev, { role: 'assistant', text: data.answer }]);
+      } catch (fallbackErr) {
+        const errorText = fallbackErr.message.includes('500') || fallbackErr.message.includes('Failed')
+          ? 'AI assistant is temporarily unavailable.'
+          : fallbackErr.message;
+        setMessages(prev => [...prev, { role: 'assistant', text: errorText, isError: true }]);
+      }
+    } finally {
+      setThinking(false);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    sendQuery(input);
+  };
+
+  return (
+    <>
+      {/* FAB */}
+      <motion.button
+        whileHover={{ scale: 1.08, boxShadow: '0 8px 30px rgba(147,51,234,0.35)' }}
+        whileTap={{ scale: 0.92 }}
+        onClick={() => setOpen(!open)}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-white shadow-2xl shadow-purple-500/25"
+      >
+        <AnimatePresence mode="wait">
+          {open ? (
+            <motion.div key="close" initial={{ scale: 0, rotate: 90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: -90 }}>
+              <X size={22} />
+            </motion.div>
+          ) : (
+            <motion.div key="chat" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: 90 }}>
+              <MessageCircle size={22} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.button>
+
+      {/* Panel */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.92 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[520px] rounded-2xl border border-[var(--color-border)] overflow-hidden flex flex-col"
+            style={{
+              background: 'var(--color-surface-card)',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1)',
+            }}
+          >
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center gap-3 bg-gradient-to-r from-purple-500/[0.06] to-transparent">
+              <motion.div
+                animate={{ boxShadow: ['0 0 0 rgba(147,51,234,0)', '0 0 16px rgba(147,51,234,0.25)', '0 0 0 rgba(147,51,234,0)'] }}
+                transition={{ duration: 2.5, repeat: Infinity }}
+                className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500/20 to-violet-500/10 flex items-center justify-center"
+              >
+                <Brain size={17} className="text-purple-400" />
+              </motion.div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-[var(--color-text-primary)]">AI Assistant</h4>
+                <p className="text-[10px] text-[var(--color-text-muted)]">Ask anything about your data</p>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setMessages([])}
+                className="p-1.5 rounded-lg hover:bg-white/5 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-all"
+                title="Clear chat"
+              >
+                <RotateCcw size={13} />
+              </motion.button>
+            </div>
+
+            {/* Messages */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[200px]">
+              {messages.length === 0 && !thinking && (
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <motion.div
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-3"
+                  >
+                    <MessageCircle size={22} className="text-purple-400" />
+                  </motion.div>
+                  <p className="text-xs text-[var(--color-text-muted)] mb-4">Ask me about your spending, habits, productivity, and more.</p>
+
+                  {/* Quick chips */}
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {QUICK_CHIPS.map(chip => (
+                      <motion.button
+                        key={chip}
+                        whileHover={{ scale: 1.03, backgroundColor: 'rgba(147,51,234,0.08)' }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => sendQuery(chip)}
+                        className="text-[11px] px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-purple-400 hover:border-purple-500/20 transition-all"
+                      >
+                        {chip}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {messages.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div>
+                    <div className={`mb-1 text-[9px] uppercase tracking-[0.18em] ${msg.role === 'user' ? 'text-right text-purple-300/70' : 'text-[var(--color-text-muted)]'}`}>
+                      {msg.role === 'user' ? 'You' : 'LifeOS AI'}
+                    </div>
+                    <div
+                      className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
+                        ? 'bg-gradient-to-r from-purple-500 to-violet-500 text-white rounded-br-md'
+                        : msg.isError
+                          ? 'bg-red-500/10 text-red-300 border border-red-500/20 rounded-bl-md'
+                          : 'bg-white/[0.04] text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-bl-md shadow-[0_10px_25px_rgba(0,0,0,0.12)]'
+                      }`}
+                    >
+                    {msg.text}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+
+              {/* Typing indicator */}
+              {thinking && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex justify-start"
+                >
+                  <div className="bg-white/[0.04] border border-[var(--color-border)] rounded-2xl rounded-bl-md px-4 py-3 flex gap-1.5">
+                    {[0, 1, 2].map(j => (
+                      <motion.div
+                        key={j}
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{ duration: 0.6, repeat: Infinity, delay: j * 0.15 }}
+                        className="w-1.5 h-1.5 rounded-full bg-purple-400/50"
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Input */}
+            <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-[var(--color-border)] flex gap-2">
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder="Ask about your data..."
+                disabled={thinking}
+                className="flex-1 bg-white/[0.03] border border-[var(--color-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/40 outline-none focus:border-purple-500/40 transition-colors disabled:opacity-50"
+              />
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                type="submit"
+                disabled={thinking || !input.trim()}
+                className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/20 disabled:opacity-40 disabled:shadow-none transition-all"
+              >
+                <Send size={16} />
+              </motion.button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 
 /* ── Main Dashboard ── */
 export default function Dashboard({ onNavigate }) {
@@ -1651,8 +2484,10 @@ export default function Dashboard({ onNavigate }) {
         transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-[var(--color-text-primary)]">
-            {getGreeting()}, {user?.name?.split(' ')[0] || 'there'} 👋
+          <h1 className="text-3xl heading-display text-glow">
+            <span className="text-[var(--color-text-primary)]">{getGreeting()}, </span>
+            <span className="heading-gradient">{user?.name?.split(' ')[0] || 'there'}</span>
+            <span className="text-[var(--color-text-primary)]"> 👋</span>
           </h1>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -1684,7 +2519,18 @@ export default function Dashboard({ onNavigate }) {
         <LiveClock />
       </div>
 
+      {/* ── AI Intelligence Strip: Weather + AI Briefing ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8 items-start">
+        <WeatherWidget />
+        <AIBriefingCard />
+      </div>
+
       <CategoryCards currentTheme={currentTheme} />
+
+      {/* ── Smart Suggestions ── */}
+      <SuggestionsBanner />
+
+      <div className="section-divider" />
 
       <DueSoonTasks />
 
@@ -1692,6 +2538,8 @@ export default function Dashboard({ onNavigate }) {
         <NotesFlashcards compact className="min-w-0" />
         <FinanceWidget className="min-w-0" />
       </div>
+
+      <div className="section-divider" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
@@ -1701,6 +2549,9 @@ export default function Dashboard({ onNavigate }) {
           <QuickStats />
         </div>
       </div>
+
+      {/* ── Floating AI Chat Assistant ── */}
+      <AIChatAssistant />
     </motion.div>
   );
 }
