@@ -1708,21 +1708,21 @@ function FinanceWidget({ className = '' }) {
 
 /* ── Weather Condition → Icon + Gradient Map ── */
 const WEATHER_MAP = {
-  'clear sky':            { Icon: Sun,             gradient: 'from-amber-500/20 via-orange-500/10 to-yellow-500/5',  accent: '#f59e0b' },
-  'few clouds':           { Icon: Cloud,           gradient: 'from-sky-500/20 via-blue-500/10 to-indigo-500/5',       accent: '#38bdf8' },
-  'scattered clouds':     { Icon: Cloud,           gradient: 'from-slate-500/15 via-blue-500/10 to-indigo-500/5',     accent: '#94a3b8' },
-  'broken clouds':        { Icon: Cloud,           gradient: 'from-gray-500/20 via-slate-500/10 to-zinc-500/5',       accent: '#9ca3af' },
-  'overcast clouds':      { Icon: Cloud,           gradient: 'from-gray-500/20 via-slate-500/10 to-zinc-500/5',       accent: '#9ca3af' },
-  'shower rain':          { Icon: CloudDrizzle,    gradient: 'from-blue-500/20 via-indigo-500/10 to-violet-500/5',     accent: '#60a5fa' },
-  'light rain':           { Icon: CloudDrizzle,    gradient: 'from-blue-500/20 via-cyan-500/10 to-sky-500/5',          accent: '#67e8f9' },
-  'moderate rain':        { Icon: CloudRain,       gradient: 'from-blue-600/20 via-indigo-500/10 to-violet-500/5',     accent: '#818cf8' },
-  'heavy intensity rain': { Icon: CloudRain,       gradient: 'from-indigo-600/25 via-blue-500/15 to-violet-500/5',     accent: '#818cf8' },
-  rain:                   { Icon: CloudRain,       gradient: 'from-blue-600/20 via-indigo-500/10 to-violet-500/5',     accent: '#818cf8' },
-  thunderstorm:           { Icon: CloudLightning,  gradient: 'from-violet-600/25 via-purple-500/15 to-fuchsia-500/5',  accent: '#a78bfa' },
-  snow:                   { Icon: CloudSnow,       gradient: 'from-sky-400/20 via-blue-300/10 to-cyan-200/5',          accent: '#bae6fd' },
-  mist:                   { Icon: Eye,             gradient: 'from-gray-400/20 via-slate-400/10 to-zinc-300/5',        accent: '#d1d5db' },
-  haze:                   { Icon: Eye,             gradient: 'from-amber-400/15 via-yellow-400/10 to-orange-300/5',    accent: '#fcd34d' },
-  fog:                    { Icon: Eye,             gradient: 'from-gray-400/20 via-slate-400/10 to-zinc-300/5',        accent: '#d1d5db' },
+  'clear sky':            { Icon: Sun,             gradient: 'linear-gradient(to bottom right, rgba(245,158,11,0.2), rgba(249,115,22,0.1), rgba(234,179,8,0.05))',  accent: '#f59e0b' },
+  'few clouds':           { Icon: Cloud,           gradient: 'linear-gradient(to bottom right, rgba(56,189,248,0.2), rgba(59,130,246,0.1), rgba(99,102,241,0.05))',  accent: '#38bdf8' },
+  'scattered clouds':     { Icon: Cloud,           gradient: 'linear-gradient(to bottom right, rgba(148,163,184,0.15), rgba(59,130,246,0.1), rgba(99,102,241,0.05))', accent: '#94a3b8' },
+  'broken clouds':        { Icon: Cloud,           gradient: 'linear-gradient(to bottom right, rgba(156,163,175,0.2), rgba(148,163,184,0.1), rgba(161,161,170,0.05))', accent: '#9ca3af' },
+  'overcast clouds':      { Icon: Cloud,           gradient: 'linear-gradient(to bottom right, rgba(156,163,175,0.2), rgba(148,163,184,0.1), rgba(161,161,170,0.05))', accent: '#9ca3af' },
+  'shower rain':          { Icon: CloudDrizzle,    gradient: 'linear-gradient(to bottom right, rgba(59,130,246,0.2), rgba(99,102,241,0.1), rgba(139,92,246,0.05))',  accent: '#60a5fa' },
+  'light rain':           { Icon: CloudDrizzle,    gradient: 'linear-gradient(to bottom right, rgba(59,130,246,0.2), rgba(6,182,212,0.1), rgba(56,189,248,0.05))',   accent: '#67e8f9' },
+  'moderate rain':        { Icon: CloudRain,       gradient: 'linear-gradient(to bottom right, rgba(37,99,235,0.2), rgba(99,102,241,0.1), rgba(139,92,246,0.05))',   accent: '#818cf8' },
+  'heavy intensity rain': { Icon: CloudRain,       gradient: 'linear-gradient(to bottom right, rgba(79,70,229,0.25), rgba(59,130,246,0.15), rgba(139,92,246,0.05))', accent: '#818cf8' },
+  rain:                   { Icon: CloudRain,       gradient: 'linear-gradient(to bottom right, rgba(37,99,235,0.2), rgba(99,102,241,0.1), rgba(139,92,246,0.05))',   accent: '#818cf8' },
+  thunderstorm:           { Icon: CloudLightning,  gradient: 'linear-gradient(to bottom right, rgba(124,58,237,0.25), rgba(168,85,247,0.15), rgba(217,70,239,0.05))', accent: '#a78bfa' },
+  snow:                   { Icon: CloudSnow,       gradient: 'linear-gradient(to bottom right, rgba(56,189,248,0.2), rgba(147,197,253,0.1), rgba(165,243,252,0.05))', accent: '#bae6fd' },
+  mist:                   { Icon: Eye,             gradient: 'linear-gradient(to bottom right, rgba(156,163,175,0.2), rgba(148,163,184,0.1), rgba(212,212,216,0.05))', accent: '#d1d5db' },
+  haze:                   { Icon: Eye,             gradient: 'linear-gradient(to bottom right, rgba(251,191,36,0.15), rgba(250,204,21,0.1), rgba(253,186,116,0.05))', accent: '#fcd34d' },
+  fog:                    { Icon: Eye,             gradient: 'linear-gradient(to bottom right, rgba(156,163,175,0.2), rgba(148,163,184,0.1), rgba(212,212,216,0.05))', accent: '#d1d5db' },
 };
 
 function getWeatherVisuals(description) {
@@ -1819,7 +1819,8 @@ function WeatherWidget() {
     >
       {/* Animated gradient overlay */}
       <motion.div
-        className={`absolute inset-0 bg-gradient-to-br ${visuals.gradient} pointer-events-none`}
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: visuals.gradient }}
         animate={{ opacity: [0.6, 0.9, 0.6] }}
         transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
       />

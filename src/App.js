@@ -61,7 +61,7 @@ function AppContent() {
       <CursorSpotlight />
       <Sidebar activePage={activePage} onNavigate={handleNavigate} />
       <CommandPalette activePage={activePage} onNavigate={handleNavigate} />
-      <main className="pl-[92px]">
+      <main className="pl-[92px] h-screen overflow-y-auto">
         <div className="p-6 max-w-[1400px] mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
