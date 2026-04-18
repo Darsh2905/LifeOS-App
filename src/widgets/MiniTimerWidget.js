@@ -1,12 +1,19 @@
 import { motion } from 'framer-motion';
 import BentoCard from '../components/BentoCard';
 import { useTimer } from '../context/TimerContext';
+import { useFocus } from '../context/FocusContext';
 import { formatTime } from '../utils/helpers';
 import { Play, Pause, RotateCcw } from 'lucide-react';
 
 export default function MiniTimerWidget() {
   const { timeLeft, isRunning, isBreak, focusDuration, breakDuration, start, pause, reset } = useTimer();
+  const { enterFocus } = useFocus();
   const progress = timeLeft / (isBreak ? breakDuration : focusDuration);
+
+  const handleStart = () => {
+    enterFocus();
+    start();
+  };
 
   return (
     <BentoCard delay={0.25} className="flex flex-col items-center justify-center text-center">
@@ -34,7 +41,7 @@ export default function MiniTimerWidget() {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={isRunning ? pause : start}
+          onClick={isRunning ? pause : handleStart}
           className="w-9 h-9 rounded-full flex items-center justify-center text-white"
           style={{ background: 'var(--accent-color)' }}
         >

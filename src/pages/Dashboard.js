@@ -1554,8 +1554,10 @@ function QuickStats() {
 /* ── Pomodoro Mini Widget ── */
 function PomodoroMini() {
   const { timeLeft, isRunning, isBreak, todaySessions, focusDuration, breakDuration, start, pause, reset } = useTimer();
+  const { enterFocus } = useFocus();
   const maxTime = isBreak ? breakDuration : focusDuration;
   const progress = timeLeft / maxTime;
+  const handleStart = () => { enterFocus(); start(); };
 
   return (
     <motion.div
@@ -1593,7 +1595,7 @@ function PomodoroMini() {
           <motion.button
             whileHover={{ scale: 1.15 }}
             whileTap={{ scale: 0.85 }}
-            onClick={isRunning ? pause : start}
+            onClick={isRunning ? pause : handleStart}
             className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20"
           >
             {isRunning ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}

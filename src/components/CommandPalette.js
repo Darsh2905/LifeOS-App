@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Search, LayoutDashboard, ListTodo, Clock, StickyNote,
+  Search, LayoutDashboard, ListTodo, StickyNote,
   Settings, Play, Plus, ArrowRight, X, Wallet,
   Sparkles, CornerDownLeft, Heart
 } from 'lucide-react';
 import { useTasks } from '../context/TaskContext';
 import { useNotes } from '../context/NotesContext';
 import { useTimer } from '../context/TimerContext';
+import { useFocus } from '../context/FocusContext';
 import { api } from '../utils/api';
 
 const pages = [
@@ -15,7 +16,6 @@ const pages = [
   { id: 'wellness', label: 'Wellness', icon: Heart, keywords: 'journal habits workout meals sleep mood health' },
   { id: 'finance', label: 'Finance', icon: Wallet, keywords: 'money budget income expense transactions rupees' },
   { id: 'tasks', label: 'Tasks', icon: ListTodo, keywords: 'todo priority due recurring' },
-  { id: 'timer', label: 'Timer', icon: Clock, keywords: 'focus pomodoro sessions' },
   { id: 'notes', label: 'Notes', icon: StickyNote, keywords: 'writing flashcards tags' },
   { id: 'settings', label: 'Settings', icon: Settings, keywords: 'theme accent profile data' },
 ];
@@ -28,6 +28,7 @@ export default function CommandPalette({ activePage, onNavigate }) {
   const { tasks } = useTasks();
   const { notes } = useNotes();
   const { start } = useTimer();
+  const { enterFocus } = useFocus();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [aiMode, setAiMode] = useState(false);
@@ -123,11 +124,11 @@ export default function CommandPalette({ activePage, onNavigate }) {
         id: 'action-start-timer',
         type: 'Action',
         title: 'Start focus timer',
-        subtitle: 'Begin the current timer session',
+        subtitle: 'Enter Focus mode and start a session',
         icon: Play,
         action: () => {
+          enterFocus();
           start();
-          onNavigate('timer');
         },
         keywords: 'start focus timer play',
       },
@@ -152,7 +153,7 @@ export default function CommandPalette({ activePage, onNavigate }) {
     ].filter(action => !trimmed || includesQuery(`${action.title} ${action.subtitle} ${action.keywords}`, trimmed));
 
     return [...actions, ...pageResults, ...taskResults, ...noteResults].slice(0, 12);
-  }, [activePage, notes, onNavigate, query, start, tasks, aiMode]);
+  }, [activePage, notes, onNavigate, query, start, tasks, aiMode, enterFocus]);
 
   const run = (item) => {
     item.action();

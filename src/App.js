@@ -22,7 +22,6 @@ import CursorSpotlight from './components/CursorSpotlight';
 import Toaster from './components/Toaster';
 import Dashboard from './pages/Dashboard';
 import TasksPage from './pages/TasksPage';
-import TimerPage from './pages/TimerPage';
 import NotesPage from './pages/NotesPage';
 import SettingsPage from './pages/SettingsPage';
 import FinancePage from './pages/FinancePage';
@@ -36,7 +35,6 @@ import AuthPage from './pages/AuthPage';
 const pages = {
   dashboard: Dashboard,
   tasks: TasksPage,
-  timer: TimerPage,
   notes: NotesPage,
   finance: FinancePage,
   settings: SettingsPage,
