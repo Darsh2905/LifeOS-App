@@ -519,47 +519,55 @@ function HeroBanner({ currentTheme, onSwitchTheme }) {
 function CategoryCards({ currentTheme }) {
   const theme = THEME_SETS.find(t => t.id === currentTheme) || THEME_SETS[0];
   const scrollRef = useRef(null);
-  const [isPaused, setIsPaused] = useState(false);
+  const pausedRef = useRef(false);
   const animRef = useRef(null);
-  const speedRef = useRef(0.6);
 
   // Duplicate items for seamless loop
   const items = [...CATEGORIES, ...CATEGORIES, ...CATEGORIES];
 
-  // Reset scroll to middle set when it drifts too far
-  const resetIfNeeded = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const oneSetWidth = el.scrollWidth / 3;
-    if (el.scrollLeft >= oneSetWidth * 2) {
-      el.scrollLeft -= oneSetWidth;
-    } else if (el.scrollLeft <= 0) {
-      el.scrollLeft += oneSetWidth;
-    }
-  }, []);
-
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Start in the middle set
-    el.scrollLeft = el.scrollWidth / 3;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const tick = () => {
-      if (!isPaused && el) {
-        el.scrollLeft += speedRef.current;
-        resetIfNeeded();
+    const oneSetWidth = () => el.scrollWidth / 3;
+    // Start in the middle set; wait a frame for layout to settle
+    requestAnimationFrame(() => { el.scrollLeft = oneSetWidth(); });
+
+    let pos = el.scrollLeft;
+    let last = performance.now();
+    const pxPerSec = 40;
+
+    const tick = (now) => {
+      const dt = Math.min(100, now - last);
+      last = now;
+      if (!pausedRef.current && !document.hidden) {
+        pos += (pxPerSec * dt) / 1000;
+        const width = oneSetWidth();
+        if (pos >= width * 2) pos -= width;
+        else if (pos <= 0) pos += width;
+        el.scrollLeft = pos;
+      } else {
+        pos = el.scrollLeft;
       }
       animRef.current = requestAnimationFrame(tick);
     };
     animRef.current = requestAnimationFrame(tick);
-    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [isPaused, resetIfNeeded]);
+
+    const onVisibility = () => { last = performance.now(); };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
 
   return (
     <div
       className="relative mb-10"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      onMouseEnter={() => { pausedRef.current = true; }}
+      onMouseLeave={() => { pausedRef.current = false; }}
     >
       {/* Fade edges */}
       <div className="absolute left-0 top-0 bottom-3 w-16 bg-gradient-to-r from-[var(--color-surface-dark)] to-transparent pointer-events-none z-10" />
