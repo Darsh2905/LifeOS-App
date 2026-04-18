@@ -29,6 +29,7 @@ import SettingsPage from './pages/SettingsPage';
 import FinancePage from './pages/FinancePage';
 import FocusMode from './pages/FocusMode';
 import DailyPlanner from './pages/DailyPlanner';
+import CalendarPage from './pages/CalendarPage';
 import WellnessPage from './pages/WellnessPage';
 import AdminPage from './pages/AdminPage';
 import AuthPage from './pages/AuthPage';
@@ -42,6 +43,7 @@ const pages = {
   analytics: AnalyticsPage,
   settings: SettingsPage,
   planner: DailyPlanner,
+  calendar: CalendarPage,
   wellness: WellnessPage,
   admin: AdminPage,
 };

@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const db = require('../db');
 const { authenticate, generateToken } = require('../middleware/auth');
 const google = require('../services/google');
+const taskSync = require('../services/taskSync');
 
 const router = express.Router();
 
@@ -152,6 +153,9 @@ router.get('/callback', async (req, res) => {
     }
 
     google.upsertTokens(userId, tokens, profile);
+
+    // Fire-and-forget: push any existing dated tasks onto the new calendar.
+    taskSync.backfillUserTasks(userId).catch(() => {});
 
     const jwtToken = generateToken(userId);
     bounceBack({

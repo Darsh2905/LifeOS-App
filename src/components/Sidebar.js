@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, ListTodo, Clock, StickyNote, BarChart3,
-  Settings, Crosshair, Sun, Moon, LogOut, Sparkles, Wallet, CalendarCheck, Heart, Shield
+  Settings, Crosshair, Sun, Moon, LogOut, Sparkles, Wallet, CalendarCheck, CalendarRange, Heart, Shield
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFocus } from '../context/FocusContext';
@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 const baseNavItems = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { id: 'planner', icon: CalendarCheck, label: 'Planner' },
+  { id: 'calendar', icon: CalendarRange, label: 'Calendar' },
   { id: 'wellness', icon: Heart, label: 'Wellness' },
   { id: 'finance', icon: Wallet, label: 'Finance' },
   { id: 'tasks', icon: ListTodo, label: 'Tasks' },
