@@ -5,31 +5,47 @@ export default function CursorSpotlight() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(hover: none)').matches) return;
+
     const el = ref.current;
     if (!el) return;
 
     let raf = 0;
+    let running = false;
     let tx = window.innerWidth / 2;
     let ty = window.innerHeight / 2;
     let cx = tx;
     let cy = ty;
 
+    const tick = () => {
+      const dx = tx - cx;
+      const dy = ty - cy;
+      cx += dx * 0.15;
+      cy += dy * 0.15;
+      el.style.transform = `translate3d(${cx}px, ${cy}px, 0) translate(-50%, -50%)`;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+        running = false;
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    const start = () => {
+      if (running) return;
+      running = true;
+      raf = requestAnimationFrame(tick);
+    };
+
     const onMove = (e) => {
       tx = e.clientX;
       ty = e.clientY;
       if (!visible) setVisible(true);
+      start();
     };
     const onLeave = () => setVisible(false);
 
-    const tick = () => {
-      cx += (tx - cx) * 0.12;
-      cy += (ty - cy) * 0.12;
-      el.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-
-    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerleave', onLeave);
     return () => {
       cancelAnimationFrame(raf);

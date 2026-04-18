@@ -61,9 +61,12 @@ router.post('/signup', signupLimiter, async (req, res) => {
   // If SMTP is configured, require email verification; otherwise auto-verify
   const autoVerify = !isEmailReady() ? 1 : 0;
 
+  const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+  const role = adminEmail && emailRaw === adminEmail ? 'admin' : 'user';
+
   db.prepare(
     'INSERT INTO users (id, name, email, password, role, status, email_verified, last_login_at, last_login_ip, login_count) VALUES (?, ?, ?, ?, ?, ?, ?, datetime(\'now\'), ?, 1)'
-  ).run(id, name, emailRaw, hashed, 'user', 'active', autoVerify, clientIp(req));
+  ).run(id, name, emailRaw, hashed, role, 'active', autoVerify, clientIp(req));
 
   // Create a default wallet account
   db.prepare('INSERT INTO accounts (id, user_id, name, type, balance, color, icon, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
@@ -116,6 +119,12 @@ router.post('/login', loginLimiter, (req, res) => {
 
   db.prepare("UPDATE users SET last_login_at = datetime('now'), last_login_ip = ?, login_count = COALESCE(login_count, 0) + 1 WHERE id = ?")
     .run(clientIp(req), user.id);
+
+  const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+  if (adminEmail && user.email === adminEmail && user.role !== 'admin') {
+    db.prepare("UPDATE users SET role = 'admin' WHERE id = ?").run(user.id);
+    user.role = 'admin';
+  }
 
   const token = generateToken(user.id);
   res.json({ token, user: toUserPayload(user) });
