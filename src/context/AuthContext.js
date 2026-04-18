@@ -7,8 +7,36 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session from token on mount
+  // Restore session from token on mount. Also absorb tokens arriving from the
+  // Google OAuth callback (?token=...) and surface a calendar-status event.
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    const calendarStatus = params.get('calendar');
+    const calendarReason = params.get('reason');
+
+    if (urlToken) {
+      setToken(urlToken);
+    }
+    if (calendarStatus || urlToken) {
+      // Strip sensitive params from the URL before anything else runs
+      const cleaned = new URL(window.location.href);
+      ['token', 'calendar', 'reason', 'new'].forEach(k => cleaned.searchParams.delete(k));
+      window.history.replaceState({}, '', cleaned.pathname + (cleaned.search ? cleaned.search : '') + cleaned.hash);
+    }
+    if (calendarStatus) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('calendar:changed', {
+          detail: { status: calendarStatus, reason: calendarReason },
+        }));
+        window.dispatchEvent(new CustomEvent('toast', {
+          detail: calendarStatus === 'connected'
+            ? { kind: 'success', title: 'Google Calendar connected', message: 'Your events will sync automatically.' }
+            : { kind: 'error', title: 'Google sign-in failed', message: calendarReason || 'Please try again.' },
+        }));
+      }, 0);
+    }
+
     const token = localStorage.getItem('lifeos-token');
     if (!token) {
       setIsLoading(false);

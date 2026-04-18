@@ -19,6 +19,7 @@ import Sidebar from './components/Sidebar';
 import CommandPalette from './components/CommandPalette';
 import AuroraBackground from './components/AuroraBackground';
 import CursorSpotlight from './components/CursorSpotlight';
+import Toaster from './components/Toaster';
 import Dashboard from './pages/Dashboard';
 import TasksPage from './pages/TasksPage';
 import TimerPage from './pages/TimerPage';
@@ -165,6 +166,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <AuthGate />
+        <Toaster />
       </AuthProvider>
     </ThemeProvider>
   );
