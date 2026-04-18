@@ -36,21 +36,14 @@ export default function FocusMode() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] bg-[#0a0a12] flex flex-col items-center justify-center overflow-hidden"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center"
+          style={{
+            background:
+              'radial-gradient(ellipse 60% 60% at 85% 15%, rgba(168,85,247,0.08), transparent 60%),' +
+              'radial-gradient(ellipse 60% 60% at 15% 85%, rgba(139,92,246,0.08), transparent 60%),' +
+              '#0a0a12',
+          }}
         >
-          {/* Ambient aurora */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.6, delay: 0.2 }}
-            className="absolute -top-60 -right-40 w-[560px] h-[560px] rounded-full bg-purple-500/10 blur-[140px] pointer-events-none"
-          />
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.6, delay: 0.3 }}
-            className="absolute -bottom-60 -left-40 w-[560px] h-[560px] rounded-full bg-violet-500/10 blur-[140px] pointer-events-none"
-          />
 
           {/* Top bar: customize + close */}
           <motion.div
