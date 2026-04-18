@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import {
-  LayoutDashboard, ListTodo, Clock, StickyNote, BarChart3,
+  LayoutDashboard, ListTodo, Clock, StickyNote,
   Settings, Crosshair, Sun, Moon, LogOut, Sparkles, Wallet, CalendarCheck, CalendarRange, Heart, Shield
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -16,7 +16,6 @@ const baseNavItems = [
   { id: 'tasks', icon: ListTodo, label: 'Tasks' },
   { id: 'timer', icon: Clock, label: 'Timer' },
   { id: 'notes', icon: StickyNote, label: 'Notes' },
-  { id: 'analytics', icon: BarChart3, label: 'Analytics' },
   { id: 'settings', icon: Settings, label: 'Settings' },
 ];
 

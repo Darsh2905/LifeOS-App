@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, LayoutDashboard, ListTodo, Clock, StickyNote,
-  BarChart3, Settings, Play, Plus, ArrowRight, X, Wallet,
+  Settings, Play, Plus, ArrowRight, X, Wallet,
   Sparkles, CornerDownLeft, Heart
 } from 'lucide-react';
 import { useTasks } from '../context/TaskContext';
@@ -17,7 +17,6 @@ const pages = [
   { id: 'tasks', label: 'Tasks', icon: ListTodo, keywords: 'todo priority due recurring' },
   { id: 'timer', label: 'Timer', icon: Clock, keywords: 'focus pomodoro sessions' },
   { id: 'notes', label: 'Notes', icon: StickyNote, keywords: 'writing flashcards tags' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, keywords: 'charts progress reports' },
   { id: 'settings', label: 'Settings', icon: Settings, keywords: 'theme accent profile data' },
 ];
 

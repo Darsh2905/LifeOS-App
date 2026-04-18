@@ -24,7 +24,6 @@ import Dashboard from './pages/Dashboard';
 import TasksPage from './pages/TasksPage';
 import TimerPage from './pages/TimerPage';
 import NotesPage from './pages/NotesPage';
-import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import FinancePage from './pages/FinancePage';
 import FocusMode from './pages/FocusMode';
@@ -40,7 +39,6 @@ const pages = {
   timer: TimerPage,
   notes: NotesPage,
   finance: FinancePage,
-  analytics: AnalyticsPage,
   settings: SettingsPage,
   planner: DailyPlanner,
   calendar: CalendarPage,
