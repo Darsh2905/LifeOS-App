@@ -423,6 +423,51 @@ for (const { name, ddl } of userColumnMigrations) {
   }
 }
 
+// Google OAuth / Calendar integration
+db.exec(`
+  CREATE TABLE IF NOT EXISTS google_tokens (
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    google_sub TEXT NOT NULL,
+    google_email TEXT,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT,
+    expires_at INTEGER NOT NULL,
+    scope TEXT,
+    connected_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_google_tokens_sub ON google_tokens(google_sub);
+`);
+
+// Mapping from a LifeOS task to its corresponding Google Calendar event
+db.exec(`
+  CREATE TABLE IF NOT EXISTS task_calendar_events (
+    task_id TEXT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    google_event_id TEXT NOT NULL,
+    calendar_id TEXT NOT NULL DEFAULT 'primary',
+    last_synced_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_task_calendar_user ON task_calendar_events(user_id);
+`);
+
+// Link Google accounts for "Sign in with Google"
+const userColumnMigrationsAuth = [
+  { name: 'google_sub', ddl: 'ALTER TABLE users ADD COLUMN google_sub TEXT' },
+  { name: 'avatar_url', ddl: 'ALTER TABLE users ADD COLUMN avatar_url TEXT' },
+];
+for (const { name, ddl } of userColumnMigrationsAuth) {
+  if (!columnExists('users', name)) {
+    try { db.exec(ddl); } catch (e) { console.warn(`Migration for users.${name} failed:`, e.message); }
+  }
+}
+try {
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL');
+} catch (e) { console.warn('google_sub index:', e.message); }
+
+// Make password nullable for Google-only users (SQLite has no ALTER COLUMN,
+// so new Google accounts insert a synthetic empty-string password instead).
+
 // Verification tokens table
 db.exec(`
   CREATE TABLE IF NOT EXISTS verification_tokens (

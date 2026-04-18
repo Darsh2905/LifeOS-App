@@ -49,6 +49,7 @@ app.use('/api/water', require('./routes/water'));
 app.use('/api/books', require('./routes/books'));
 app.use('/api/capture', require('./routes/capture'));
 app.use('/api/medications', require('./routes/medications'));
+app.use('/api/calendar', require('./routes/calendar'));
 
 // Health check (reports which optional services are configured)
 app.get('/api/health', (req, res) => res.json({

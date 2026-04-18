@@ -33,6 +33,7 @@ function toUserPayload(user) {
     status: user.status || 'active',
     emailVerified: !!user.email_verified,
     avatar: (user.name || '?').charAt(0).toUpperCase(),
+    avatarUrl: user.avatar_url || null,
   };
 }
 
@@ -89,7 +90,7 @@ router.post('/signup', signupLimiter, async (req, res) => {
   }
 
   // Auto-verified (no SMTP) — return token immediately
-  const user = db.prepare('SELECT id, name, email, role, status, email_verified FROM users WHERE id = ?').get(id);
+  const user = db.prepare('SELECT id, name, email, role, status, email_verified, avatar_url FROM users WHERE id = ?').get(id);
   const jwtToken = generateToken(id);
   res.status(201).json({ token: jwtToken, user: toUserPayload(user) });
 });
@@ -151,7 +152,7 @@ router.get('/verify', (req, res) => {
   db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(record.user_id);
   db.prepare('UPDATE verification_tokens SET used = 1 WHERE id = ?').run(record.id);
 
-  const user = db.prepare('SELECT id, name, email, role, status, email_verified FROM users WHERE id = ?').get(record.user_id);
+  const user = db.prepare('SELECT id, name, email, role, status, email_verified, avatar_url FROM users WHERE id = ?').get(record.user_id);
   const jwtToken = generateToken(record.user_id);
 
   res.json({
