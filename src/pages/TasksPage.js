@@ -1,11 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BentoCard from '../components/BentoCard';
 import ProgressBar from '../components/ProgressBar';
 import Modal from '../components/Modal';
+import Select from '../components/Select';
+import DatePicker from '../components/DatePicker';
 import { useTasks } from '../context/TaskContext';
 import { TASK_STATES, PRIORITIES, PRIORITY_COLORS, RECURRENCE_OPTIONS } from '../utils/constants';
 import { Plus, Filter, Check, ArrowRight, Trash2, Pencil, CalendarDays, Save, Repeat2 } from 'lucide-react';
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'All Status' },
+  { value: TASK_STATES.TODO, label: 'To Do', dot: '#9333ea' },
+  { value: TASK_STATES.IN_PROGRESS, label: 'In Progress', dot: '#f59e0b' },
+  { value: TASK_STATES.DONE, label: 'Done', dot: '#22c55e' },
+];
+
+const PRIORITY_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Priority' },
+  { value: 'high', label: 'High', dot: '#f87171' },
+  { value: 'medium', label: 'Medium', dot: '#fbbf24' },
+  { value: 'low', label: 'Low', dot: '#34d399' },
+];
+
+const PRIORITY_FIELD_OPTIONS = [
+  { value: 'high', label: 'High Priority', dot: '#f87171' },
+  { value: 'medium', label: 'Medium Priority', dot: '#fbbf24' },
+  { value: 'low', label: 'Low Priority', dot: '#34d399' },
+];
 
 const stateLabels = {
   [TASK_STATES.TODO]: 'To Do',
@@ -58,6 +80,11 @@ export default function TasksPage({ pageAction, onPageActionHandled }) {
   const [editPriority, setEditPriority] = useState(PRIORITIES.MEDIUM);
   const [editDueDate, setEditDueDate] = useState('');
   const [editRecurring, setEditRecurring] = useState('none');
+
+  const recurrenceOptions = useMemo(
+    () => RECURRENCE_OPTIONS.map(o => ({ value: o.id, label: o.label })),
+    []
+  );
 
   useEffect(() => {
     if (pageAction?.page !== 'tasks' || pageAction.action !== 'new-task') return;
@@ -154,26 +181,24 @@ export default function TasksPage({ pageAction, onPageActionHandled }) {
             <span className="text-xs text-[var(--color-text-muted)]">Filters</span>
           </div>
           <div className="flex gap-2">
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              className="bg-[var(--color-surface-dark)] border border-[var(--color-glass-border)] rounded-lg px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none"
-            >
-              <option value="all">All Status</option>
-              <option value={TASK_STATES.TODO}>To Do</option>
-              <option value={TASK_STATES.IN_PROGRESS}>In Progress</option>
-              <option value={TASK_STATES.DONE}>Done</option>
-            </select>
-            <select
-              value={filterPriority}
-              onChange={e => setFilterPriority(e.target.value)}
-              className="bg-[var(--color-surface-dark)] border border-[var(--color-glass-border)] rounded-lg px-2 py-1 text-xs text-[var(--color-text-primary)] outline-none"
-            >
-              <option value="all">All Priority</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+            <div className="w-[140px]">
+              <Select
+                size="sm"
+                value={filterStatus}
+                onChange={setFilterStatus}
+                options={STATUS_OPTIONS}
+                ariaLabel="Filter by status"
+              />
+            </div>
+            <div className="w-[140px]">
+              <Select
+                size="sm"
+                value={filterPriority}
+                onChange={setFilterPriority}
+                options={PRIORITY_FILTER_OPTIONS}
+                ariaLabel="Filter by priority"
+              />
+            </div>
           </div>
         </div>
         <ProgressBar value={completionRate} />
@@ -271,30 +296,21 @@ export default function TasksPage({ pageAction, onPageActionHandled }) {
             autoFocus
             className="w-full bg-transparent border border-[var(--color-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--accent-color)] transition-colors"
           />
-          <select
+          <Select
             value={newPriority}
-            onChange={e => setNewPriority(e.target.value)}
-            className="w-full bg-[var(--color-surface-dark)] border border-[var(--color-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none"
-          >
-            <option value="high">High Priority</option>
-            <option value="medium">Medium Priority</option>
-            <option value="low">Low Priority</option>
-          </select>
-          <input
-            value={newDueDate}
-            onChange={e => setNewDueDate(e.target.value)}
-            type="date"
-            className="w-full bg-[var(--color-surface-dark)] border border-[var(--color-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--accent-color)] transition-colors"
+            onChange={setNewPriority}
+            options={PRIORITY_FIELD_OPTIONS}
           />
-          <select
+          <DatePicker
+            value={newDueDate}
+            onChange={setNewDueDate}
+            placeholder="Pick a due date"
+          />
+          <Select
             value={newRecurring}
-            onChange={e => setNewRecurring(e.target.value)}
-            className="w-full bg-[var(--color-surface-dark)] border border-[var(--color-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--accent-color)] transition-colors"
-          >
-            {RECURRENCE_OPTIONS.map(option => (
-              <option key={option.id} value={option.id}>{option.label}</option>
-            ))}
-          </select>
+            onChange={setNewRecurring}
+            options={recurrenceOptions}
+          />
           <button
             type="submit"
             className="w-full py-2.5 rounded-xl text-sm font-medium text-white"
@@ -319,36 +335,27 @@ export default function TasksPage({ pageAction, onPageActionHandled }) {
           </label>
           <label className="block">
             <span className="text-xs font-medium text-[var(--color-text-muted)] mb-1.5 block">Due Date</span>
-            <input
+            <DatePicker
               value={editDueDate}
-              onChange={e => setEditDueDate(e.target.value)}
-              type="date"
-              className="w-full bg-[var(--color-surface-dark)] border border-[var(--color-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--accent-color)] transition-colors"
+              onChange={setEditDueDate}
+              placeholder="Pick a due date"
             />
           </label>
           <label className="block">
             <span className="text-xs font-medium text-[var(--color-text-muted)] mb-1.5 block">Priority</span>
-            <select
+            <Select
               value={editPriority}
-              onChange={e => setEditPriority(e.target.value)}
-              className="w-full bg-[var(--color-surface-dark)] border border-[var(--color-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--accent-color)] transition-colors"
-            >
-              <option value="high">High Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="low">Low Priority</option>
-            </select>
+              onChange={setEditPriority}
+              options={PRIORITY_FIELD_OPTIONS}
+            />
           </label>
           <label className="block">
             <span className="text-xs font-medium text-[var(--color-text-muted)] mb-1.5 block">Repeat</span>
-            <select
+            <Select
               value={editRecurring}
-              onChange={e => setEditRecurring(e.target.value)}
-              className="w-full bg-[var(--color-surface-dark)] border border-[var(--color-glass-border)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--accent-color)] transition-colors"
-            >
-              {RECURRENCE_OPTIONS.map(option => (
-                <option key={option.id} value={option.id}>{option.label}</option>
-              ))}
-            </select>
+              onChange={setEditRecurring}
+              options={recurrenceOptions}
+            />
           </label>
           <div className="flex gap-2 pt-1">
             <button
