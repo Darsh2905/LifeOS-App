@@ -14,9 +14,7 @@ const FloatingOrbs = memo(function FloatingOrbs() {
   const orbs = [
     { size: 300, x: '15%', y: '20%', color: 'rgba(147, 51, 234, 0.08)', delay: 0 },
     { size: 200, x: '75%', y: '60%', color: 'rgba(168, 85, 247, 0.06)', delay: 1 },
-    { size: 150, x: '60%', y: '15%', color: 'rgba(124, 58, 237, 0.07)', delay: 2 },
     { size: 250, x: '30%', y: '75%', color: 'rgba(217, 70, 239, 0.05)', delay: 0.5 },
-    { size: 180, x: '85%', y: '30%', color: 'rgba(99, 102, 241, 0.06)', delay: 1.5 },
   ];
 
   return (
@@ -24,21 +22,21 @@ const FloatingOrbs = memo(function FloatingOrbs() {
       {orbs.map((orb, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full blur-3xl"
+          className="absolute rounded-full blur-2xl"
           style={{
             width: orb.size,
             height: orb.size,
             left: orb.x,
             top: orb.y,
             background: orb.color,
+            willChange: 'transform',
           }}
           animate={{
             x: [0, 30, -20, 0],
             y: [0, -25, 15, 0],
-            scale: [1, 1.1, 0.95, 1],
           }}
           transition={{
-            duration: 12 + i * 2,
+            duration: 16 + i * 3,
             repeat: Infinity,
             delay: orb.delay,
             ease: 'easeInOut',
@@ -62,7 +60,7 @@ const FloatingOrbs = memo(function FloatingOrbs() {
 });
 
 /* ── Particle field (memoized to avoid re-randomizing on parent re-render) ── */
-const PARTICLES = Array.from({ length: 12 }, (_, i) => ({
+const PARTICLES = Array.from({ length: 6 }, (_, i) => ({
   id: i,
   size: 2 + (((i * 7 + 3) % 11) / 11) * 3,
   left: ((i * 17 + 5) % 100),
@@ -636,16 +634,6 @@ export default function AuthPage() {
                           <ArrowRight size={16} />
                         </>
                       )}
-                      {/* Shimmer effect */}
-                      <motion.div
-                        className="absolute inset-0 opacity-0 hover:opacity-100"
-                        style={{
-                          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%)',
-                          backgroundSize: '200% 100%',
-                        }}
-                        animate={{ backgroundPosition: ['-200% 0', '200% 0'] }}
-                        transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-                      />
                     </motion.button>
                   </motion.form>
                 </AnimatePresence>
