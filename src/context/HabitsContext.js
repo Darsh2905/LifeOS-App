@@ -52,7 +52,7 @@ export function HabitsProvider({ children }) {
   }, []);
 
   return (
-    <HabitsContext.Provider value={{ habits, addHabit, toggleDay, deleteHabit, loading }}>
+    <HabitsContext.Provider value={{ habits, addHabit, toggleDay, deleteHabit, refresh, loading }}>
       {children}
     </HabitsContext.Provider>
   );

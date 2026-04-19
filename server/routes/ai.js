@@ -26,6 +26,7 @@ const {
   buildWellnessCorrelations,
 } = require('../services/localIntelligence');
 const { getWeather } = require('../services/weather');
+const { runAgent } = require('../services/agent');
 
 const router = express.Router();
 
@@ -257,6 +258,26 @@ router.post('/summarize-note', authenticate, (req, res) => {
   } catch (err) {
     console.error('Summarize note error:', err.message);
     res.status(500).json({ error: 'Failed to summarize note.' });
+  }
+});
+
+router.post('/agent', authenticate, async (req, res) => {
+  try {
+    if (!rateGuard(req, res)) return;
+    const { message, conversationId } = req.body;
+    if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required.' });
+
+    const user = db.prepare('SELECT name, email FROM users WHERE id = ?').get(req.userId);
+    const result = await runAgent({
+      userId: req.userId,
+      message: message.trim(),
+      conversationId: conversationId || null,
+      userProfile: user || null,
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('Agent error:', err);
+    res.status(500).json({ error: err.message || 'Agent failed to process request.' });
   }
 });
 

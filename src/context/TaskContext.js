@@ -138,7 +138,7 @@ export function TaskProvider({ children }) {
 
   return (
     <TaskContext.Provider value={{
-      tasks, addTask, updateTask, completeTask, deleteTask, clearAllTasks,
+      tasks, addTask, updateTask, completeTask, deleteTask, clearAllTasks, refresh,
       todayTasks, completedToday, totalToday, completionRate, loading,
     }}>
       {children}

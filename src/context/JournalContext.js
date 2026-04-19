@@ -43,7 +43,7 @@ export function JournalProvider({ children }) {
   }, []);
 
   return (
-    <JournalContext.Provider value={{ entries, addEntry, deleteEntry, loading }}>
+    <JournalContext.Provider value={{ entries, addEntry, deleteEntry, refresh, loading }}>
       {children}
     </JournalContext.Provider>
   );

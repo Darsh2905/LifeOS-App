@@ -87,7 +87,7 @@ export function NotesProvider({ children }) {
   });
 
   return (
-    <NotesContext.Provider value={{ notes: sortedNotes, addNote, updateNote, deleteNote, togglePin, duplicateNote, clearAllNotes, allTags, loading }}>
+    <NotesContext.Provider value={{ notes: sortedNotes, addNote, updateNote, deleteNote, togglePin, duplicateNote, clearAllNotes, refresh, allTags, loading }}>
       {children}
     </NotesContext.Provider>
   );

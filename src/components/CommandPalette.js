@@ -3,13 +3,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, LayoutDashboard, ListTodo, StickyNote,
   Settings, Play, Plus, ArrowRight, X, Wallet,
-  Sparkles, CornerDownLeft, Heart
+  Sparkles, Heart
 } from 'lucide-react';
 import { useTasks } from '../context/TaskContext';
 import { useNotes } from '../context/NotesContext';
 import { useTimer } from '../context/TimerContext';
 import { useFocus } from '../context/FocusContext';
-import { api } from '../utils/api';
+import AiAssistant from './AiAssistant';
 
 const pages = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, keywords: 'home overview due soon stats' },
@@ -32,9 +32,6 @@ export default function CommandPalette({ activePage, onNavigate }) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [aiMode, setAiMode] = useState(false);
-  const [aiAnswer, setAiAnswer] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -57,20 +54,12 @@ export default function CommandPalette({ activePage, onNavigate }) {
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !aiMode) {
       setTimeout(() => inputRef.current?.focus(), 50);
-    } else {
+    } else if (!isOpen) {
       setQuery('');
-      setAiAnswer(null);
-      setAiError(null);
     }
-  }, [isOpen]);
-
-  useEffect(() => {
-    // Reset answer when query changes
-    setAiAnswer(null);
-    setAiError(null);
-  }, [query, aiMode]);
+  }, [isOpen, aiMode]);
 
   const results = useMemo(() => {
     if (aiMode) return [];
@@ -115,10 +104,10 @@ export default function CommandPalette({ activePage, onNavigate }) {
         id: 'action-ask-ai',
         type: 'AI',
         title: 'Ask LifeOS AI',
-        subtitle: 'Query your data in natural language',
+        subtitle: 'Take actions or query with natural language',
         icon: Sparkles,
         action: () => { setAiMode(true); setQuery(''); },
-        keywords: 'ai ask question claude assistant',
+        keywords: 'ai ask question assistant agent action',
       },
       {
         id: 'action-start-timer',
@@ -158,29 +147,6 @@ export default function CommandPalette({ activePage, onNavigate }) {
   const run = (item) => {
     item.action();
     if (item.type !== 'AI') setIsOpen(false);
-  };
-
-  const runAiQuery = async () => {
-    const q = query.trim();
-    if (!q || aiLoading) return;
-    setAiLoading(true);
-    setAiAnswer(null);
-    setAiError(null);
-    try {
-      const data = await api.post('/ai/query', { query: q });
-      setAiAnswer(data.answer || 'No answer returned.');
-    } catch (err) {
-      setAiError(err.message || 'AI request failed.');
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const onKeyDown = (e) => {
-    if (e.key === 'Enter' && aiMode) {
-      e.preventDefault();
-      runAiQuery();
-    }
   };
 
   return (
@@ -235,22 +201,21 @@ export default function CommandPalette({ activePage, onNavigate }) {
                 >
                   {aiMode ? <Sparkles size={16} /> : <Search size={16} />}
                 </motion.button>
-                <input
-                  ref={inputRef}
-                  value={query}
-                  onChange={event => setQuery(event.target.value)}
-                  onKeyDown={onKeyDown}
-                  placeholder={aiMode ? 'Ask anything about your data…' : 'Search tasks, notes, pages, and actions…'}
-                  className="flex-1 bg-transparent text-[15px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none"
-                />
-                {aiMode && (
-                  <button
-                    onClick={runAiQuery}
-                    disabled={!query.trim() || aiLoading}
-                    className="flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-white/[0.04] px-2 py-1 text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-40"
-                  >
-                    Ask <CornerDownLeft size={11} />
-                  </button>
+                {aiMode ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <span className="text-[13px] font-semibold text-[var(--color-text-primary)]">LifeOS AI</span>
+                    <span className="rounded-md bg-gradient-to-r from-purple-500/20 to-fuchsia-500/20 border border-purple-500/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-200">
+                      Agent
+                    </span>
+                  </div>
+                ) : (
+                  <input
+                    ref={inputRef}
+                    value={query}
+                    onChange={event => setQuery(event.target.value)}
+                    placeholder="Search tasks, notes, pages, and actions…"
+                    className="flex-1 bg-transparent text-[15px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none"
+                  />
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
@@ -260,97 +225,49 @@ export default function CommandPalette({ activePage, onNavigate }) {
                 </button>
               </div>
 
-              <div className="max-h-[460px] overflow-y-auto p-2">
-                {aiMode ? (
-                  <div className="px-4 py-6">
-                    {!query.trim() && !aiAnswer && !aiLoading && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                          <Sparkles size={12} className="text-purple-400" /> Try asking
-                        </div>
-                        {[
-                          'How much did I spend last month?',
-                          'What is my longest current streak?',
-                          'How many tasks did I complete this week?',
-                          'Mood trend over the last 30 days',
-                        ].map(sample => (
-                          <button
-                            key={sample}
-                            onClick={() => setQuery(sample)}
-                            className="block w-full rounded-xl border border-[var(--color-border)] bg-white/[0.02] px-3 py-2.5 text-left text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-hover)]"
-                          >
-                            {sample}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {aiLoading && (
-                      <div className="flex flex-col items-center gap-4 py-8">
-                        <div className="ambient-loader" />
-                        <p className="text-sm text-[var(--color-text-muted)]">Thinking…</p>
-                      </div>
-                    )}
-
-                    {aiError && !aiLoading && (
-                      <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-300">
-                        {aiError}
-                      </div>
-                    )}
-
-                    {aiAnswer && !aiLoading && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/[0.06] to-transparent p-4"
-                      >
-                        <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-purple-300">
-                          <Sparkles size={12} /> Answer
-                        </div>
-                        <p className="text-sm leading-relaxed text-[var(--color-text-primary)] whitespace-pre-wrap">
-                          {aiAnswer}
-                        </p>
-                      </motion.div>
-                    )}
-                  </div>
-                ) : results.length === 0 ? (
-                  <div className="px-4 py-10 text-center">
-                    <p className="text-sm font-medium text-[var(--color-text-primary)]">No results</p>
-                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">Try a task title, note tag, or page name.</p>
-                  </div>
-                ) : (
-                  results.map((item, index) => {
-                    const Icon = item.icon;
-                    const isAi = item.type === 'AI';
-                    return (
-                      <motion.button
-                        key={item.id}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.02 }}
-                        onClick={() => run(item)}
-                        className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-white/[0.05]"
-                      >
-                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                          isAi
-                            ? 'bg-gradient-to-br from-purple-500 to-fuchsia-500 text-white shadow-md shadow-purple-500/25'
-                            : 'bg-purple-500/10 text-purple-400'
-                        }`}>
-                          <Icon size={17} />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-2">
-                            <span className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{item.title}</span>
-                            <span className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-[var(--color-text-muted)]">{item.type}</span>
+              {aiMode ? (
+                <AiAssistant onClose={() => setIsOpen(false)} />
+              ) : (
+                <div className="max-h-[460px] overflow-y-auto p-2">
+                  {results.length === 0 ? (
+                    <div className="px-4 py-10 text-center">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">No results</p>
+                      <p className="mt-1 text-xs text-[var(--color-text-muted)]">Try a task title, note tag, or page name.</p>
+                    </div>
+                  ) : (
+                    results.map((item, index) => {
+                      const Icon = item.icon;
+                      const isAi = item.type === 'AI';
+                      return (
+                        <motion.button
+                          key={item.id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.02 }}
+                          onClick={() => run(item)}
+                          className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-white/[0.05]"
+                        >
+                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                            isAi
+                              ? 'bg-gradient-to-br from-purple-500 to-fuchsia-500 text-white shadow-md shadow-purple-500/25'
+                              : 'bg-purple-500/10 text-purple-400'
+                          }`}>
+                            <Icon size={17} />
                           </span>
-                          <span className="mt-0.5 block truncate text-xs text-[var(--color-text-muted)]">{item.subtitle}</span>
-                        </span>
-                        <ArrowRight size={15} className="text-[var(--color-text-muted)] opacity-0 transition-opacity group-hover:opacity-100" />
-                      </motion.button>
-                    );
-                  })
-                )}
-              </div>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2">
+                              <span className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{item.title}</span>
+                              <span className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-[var(--color-text-muted)]">{item.type}</span>
+                            </span>
+                            <span className="mt-0.5 block truncate text-xs text-[var(--color-text-muted)]">{item.subtitle}</span>
+                          </span>
+                          <ArrowRight size={15} className="text-[var(--color-text-muted)] opacity-0 transition-opacity group-hover:opacity-100" />
+                        </motion.button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center justify-between border-t border-[var(--color-border)] px-4 py-2.5 text-[10px] text-[var(--color-text-muted)]">
                 <div className="flex items-center gap-3">
